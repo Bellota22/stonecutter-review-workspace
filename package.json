@@ -1,0 +1,28 @@
+{
+  "name": "stonecutter-engineering-assessment",
+  "version": "4.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "demo": "node --import tsx main.ts report --brand cedar-coast",
+    "report": "node --import tsx main.ts report",
+    "query": "node --import tsx main.ts query",
+    "reset": "node --import tsx main.ts reset",
+    "test": "npm run test:ts && npm run test:python",
+    "typecheck": "tsc --noEmit",
+    "test:ts": "node --import tsx --test tests/*.test.ts",
+    "test:python": "node --import tsx scripts/python.ts test",
+    "setup": "node --import tsx scripts/python.ts setup"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.9"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.15",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

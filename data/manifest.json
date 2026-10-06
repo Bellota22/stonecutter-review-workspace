@@ -1,0 +1,22 @@
+{
+  "seed": 20261006,
+  "asOf": "2026-10-06T12:00:00Z",
+  "currency": "USD",
+  "logicalSha256": "f17a432020ad5ea09b11df7f59e66dcb3b1cb7d236740badc1d18027c57283ac",
+  "counts": {
+    "brands": 5,
+    "products": 300,
+    "raw.subscription_reports": 254,
+    "raw.subscription_offers": 30460,
+    "raw.sales_daily": 23520,
+    "raw.advertising_daily": 392,
+    "raw.inventory_snapshots": 2940,
+    "ingestion_runs": 254,
+    "marts.subscription_weekly": 84
+  },
+  "totalRows": 58209,
+  "exports": {
+    "exports/subscription_reports.csv": 253,
+    "exports/subscription_offers.csv": 30360
+  }
+}
