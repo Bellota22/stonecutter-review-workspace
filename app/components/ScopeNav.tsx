@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { CaseView } from '../../src/server/caseService.ts';
+import type { CaseState } from '../../src/server/reviewStore.ts';
 
 export interface ScopeEntry {
   brandId: string;
@@ -14,8 +14,8 @@ export function ScopeNav({
   active,
 }: {
   scopes: ScopeEntry[];
-  states: { brandId: string; marketplace: string; status: string; outcome: string | null }[];
-  active?: Pick<CaseView['scope'], 'brandId' | 'marketplace'>;
+  states: CaseState[];
+  active?: { brandId: string; marketplace: string };
 }) {
   const stateFor = (scope: ScopeEntry) =>
     states.find((state) => state.brandId === scope.brandId && state.marketplace === scope.marketplace);
@@ -23,7 +23,7 @@ export function ScopeNav({
   return (
     <nav className="rail" aria-label="Marketplace scopes">
       <div>
-        <div className="rail__title">Scopes</div>
+        <div className="rail__title">Scopes · {scopes.length}</div>
         <div className="rail__list">
           {scopes.map((scope) => {
             const state = stateFor(scope);
@@ -39,28 +39,28 @@ export function ScopeNav({
                   {scope.brandName}
                   <small style={{ display: 'block' }}>{scope.marketplace}</small>
                 </span>
-                <StateDot state={state} />
+                <span className={stateDot(state)} title={stateLabel(state)} />
               </Link>
             );
           })}
         </div>
       </div>
-      <div className="notice notice--info" style={{ fontSize: 12 }}>
-        <span className="notice__mark">i</span>
-        <div>
-          Reporting week <strong>28 Sep – 4 Oct 2026</strong>, clock fixed at 6 Oct 2026 12:00 UTC. Publisher
-          exports are the source of record.
-        </div>
-      </div>
+      <p className="rail__hint">
+        Reporting week <strong>28 Sep – 4 Oct 2026</strong>. Clock fixed at 6 Oct 12:00 UTC. Publisher exports
+        are the source of record.
+      </p>
     </nav>
   );
 }
 
-function StateDot({ state }: { state?: { status: string; outcome: string | null } }) {
-  if (!state) return <span className="chip__dot" style={{ background: '#d5dae2' }} title="Not reviewed" />;
-  if (state.status === 'needs_attention')
-    return <span className="chip__dot" style={{ background: 'var(--block)' }} title="Requires attention" />;
-  if (state.outcome === 'expand_promotion')
-    return <span className="chip__dot" style={{ background: 'var(--ok)' }} title="Decision saved: expand" />;
-  return <span className="chip__dot" style={{ background: '#d9a13b' }} title="Decision saved: hold" />;
+function stateDot(state: CaseState | undefined): string {
+  if (!state) return 'dot';
+  if (state.status === 'needs_attention') return 'dot dot--block';
+  return state.outcome === 'expand_promotion' ? 'dot dot--ok' : 'dot dot--warn';
+}
+
+function stateLabel(state: CaseState | undefined): string {
+  if (!state) return 'Not reviewed';
+  if (state.status === 'needs_attention') return 'Requires attention';
+  return state.outcome === 'expand_promotion' ? 'Decision saved: expand' : 'Decision saved: hold';
 }

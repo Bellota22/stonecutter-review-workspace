@@ -34,6 +34,40 @@ const day = (value: string | null): string => (value ? value.slice(0, 10) : 'unk
 const number = (value: number | null): string =>
   value === null ? 'Unavailable' : value.toLocaleString('en-US');
 
+/**
+ * The outcome in one sentence a person can act on. Built from the failing check, so the headline and
+ * the evidence cannot disagree.
+ */
+export function verdictHeadline(evidence: Evidence, verdict: DecisionVerdict): string {
+  if (verdict.outcome === 'expand_promotion') {
+    return `${evidence.growthPct}% growth is verified: a ${verdict.budgetChangePct}% expansion is authorized.`;
+  }
+  const failing = (code: string): boolean =>
+    (evidence.checks ?? []).some((check) => check.code === code && !check.ok);
+  if (failing('current_complete')) {
+    return `This week is only published through ${day(evidence.currentReport?.periodEnd ?? null)}, not the full week.`;
+  }
+  if (failing('previous_complete')) {
+    return `The previous week is incomplete, so there is nothing comparable to grow from.`;
+  }
+  if (failing('current_reconciled') || failing('previous_reconciled')) {
+    const report = evidence.currentReport;
+    const loaded = failing('current_reconciled')
+      ? report?.loadedOffers
+      : evidence.previousReport?.loadedOffers;
+    const declared = failing('current_reconciled')
+      ? report?.declaredOfferCount
+      : evidence.previousReport?.declaredOfferCount;
+    return `Only ${loaded} of ${declared} offers were imported: the comparison cannot be trusted.`;
+  }
+  if (failing('import_fresh')) return 'The latest import is stale, so this week cannot be reported yet.';
+  if (failing('baseline_available')) return 'There is no previous week to compare against.';
+  if (evidence.growthPct !== null) {
+    return `${evidence.growthPct}% growth is below the ${POLICY.minimumGrowthPct}% needed to expand.`;
+  }
+  return 'The evidence does not support a growth claim for this week.';
+}
+
 /** The next action, derived from the evidence that is missing rather than from a template. */
 export function nextStep(evidence: Evidence, verdict: DecisionVerdict): string {
   if (verdict.outcome === 'expand_promotion') {

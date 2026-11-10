@@ -1,17 +1,15 @@
 import Link from 'next/link';
 import { listScopes } from '../../../../src/metrics.ts';
 import { withDatabase } from '../../../../src/server/db.ts';
-import { openCase } from '../../../../src/server/caseService.ts';
+import { openCase, reportFor } from '../../../../src/server/caseService.ts';
 import { listCaseStates } from '../../../../src/server/reviewStore.ts';
-import { ChecksList } from '../../../components/ChecksList.tsx';
-import { DecisionPanel } from '../../../components/DecisionPanel.tsx';
-import { EvidenceComparison } from '../../../components/EvidenceComparison.tsx';
-import { Reconciliation } from '../../../components/Reconciliation.tsx';
-import { ReportPanel } from '../../../components/ReportPanel.tsx';
+import { DecisionRail } from '../../../components/DecisionRail.tsx';
+import { MetricStrip } from '../../../components/MetricStrip.tsx';
+import { ReportCard } from '../../../components/ReportCard.tsx';
 import { ScopeNav } from '../../../components/ScopeNav.tsx';
-import { StatusChip } from '../../../components/primitives.tsx';
-import { VerdictCard } from '../../../components/VerdictCard.tsx';
-import { day } from '../../../components/primitives.tsx';
+import { ChecksCard, VerdictBar } from '../../../components/VerdictBar.tsx';
+import { WhyCard } from '../../../components/WhyCard.tsx';
+import { StatusChip, day } from '../../../components/primitives.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,33 +43,38 @@ export default async function CasePage({
     );
   }
 
+  const report = reportFor(view);
+
   return (
     <main className="shell">
       <ScopeNav scopes={scopes} states={states} active={view.scope} />
 
-      <div className="stack">
-        <div className="pagehead">
+      <div className="case">
+        <header className="casehead">
           <div>
-            <h1 className="tight">
-              {view.scope.brandName}{' '}
-              <span className="muted" style={{ fontWeight: 400 }}>
-                · {view.scope.marketplace}
-              </span>
+            <h1>
+              {view.scope.brandName} <span>· {view.scope.marketplace}</span>
             </h1>
-            <p className="pagehead__sub">
-              Week of {day(view.scope.periodStart)} to {day(view.scope.expectedPeriodEnd)} · case{' '}
-              <span className="mono">{view.caseId}</span> · opened {day(view.createdAt)}
+            <p className="casehead__sub">
+              Week of {day(view.scope.periodStart)} to {day(view.scope.expectedPeriodEnd)} ·{' '}
+              <span className="mono">{view.caseId}</span>
             </p>
           </div>
           <StatusChip view={view} />
+        </header>
+
+        <MetricStrip view={view} />
+        <VerdictBar view={view} />
+
+        <div className="casegrid">
+          <div className="stack">
+            <WhyCard view={view} />
+            <ChecksCard view={view} />
+          </div>
+          <DecisionRail view={view} />
         </div>
 
-        <VerdictCard view={view} />
-        <EvidenceComparison view={view} />
-        <Reconciliation view={view} />
-        <ChecksList view={view} />
-        <DecisionPanel view={view} />
-        <ReportPanel view={view} />
+        <ReportCard result={report} />
       </div>
     </main>
   );

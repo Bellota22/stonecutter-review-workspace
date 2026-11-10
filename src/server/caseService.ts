@@ -221,13 +221,11 @@ function sourcesOf(evidence: Evidence): ReportSource[] {
     }));
 }
 
-/** The client report is generated from the saved decision, and only while its evidence still holds. */
-export async function generateReport(
-  db: PGlite,
-  brandId: string,
-  marketplace: string,
-): Promise<ReportResult> {
-  const view = await openCase(db, brandId, marketplace);
+/**
+ * What the client report is right now, given the case. Pure: it never writes, so a page can render
+ * the report as part of the case instead of asking the user to press a button to see their outcome.
+ */
+export function reportFor(view: CaseView): ReportResult {
   if (!view.decision) return { kind: 'no_decision' };
   if (view.attention) return { kind: 'requires_attention', changes: view.attention.changes };
   if (view.decision.outcome === 'expand_promotion' && view.verdict.outcome !== 'expand_promotion') {
@@ -249,6 +247,19 @@ export async function generateReport(
     limitations: view.decision.limitations,
     sources: view.decision.sources,
   });
-  await appendEvent(db, view.caseId, 'report_generated', { fingerprint: view.fingerprint });
   return { kind: 'ready', report };
+}
+
+/** Records that the report was produced, then returns it. */
+export async function generateReport(
+  db: PGlite,
+  brandId: string,
+  marketplace: string,
+): Promise<ReportResult> {
+  const view = await openCase(db, brandId, marketplace);
+  const result = reportFor(view);
+  if (result.kind === 'ready') {
+    await appendEvent(db, view.caseId, 'report_generated', { fingerprint: view.fingerprint });
+  }
+  return result;
 }

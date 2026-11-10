@@ -9,13 +9,13 @@ import path from 'node:path';
  */
 export function projectRoot(): string {
   try {
-    const meta = import.meta as { url?: string };
-    if (meta?.url?.startsWith('file:')) {
-      const candidate = path.resolve(decodeURIComponent(new URL(meta.url).pathname), '..');
+    const url = import.meta.url;
+    if (url.startsWith('file:')) {
+      const candidate = path.resolve(decodeURIComponent(new URL(url).pathname), '..');
       if (existsSync(path.join(candidate, 'package.json'))) return candidate;
     }
   } catch {
-    /* fall through to the working directory */
+    // A bundled server chunk has no usable module path.
   }
   return process.cwd();
 }

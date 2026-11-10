@@ -75,20 +75,26 @@ measured ingestion gap.
 
 ## Visual and interaction decisions
 
-- **Outcome first.** The verdict card states what the evidence supports before any figure, and lists
-  either the passed checks or the exact reasons for blocking. The user answers "can I send this?"
-  in one glance, then reads why.
-- **Comparison over decoration.** Current week, previous week and the change sit in one row with the
-  coverage caveat attached to each figure (`partial through 2026-10-02`), so a number can never be read
-  without its limitation.
-- **Show the discrepancy explicitly.** The reconciliation strip puts "counted before this review"
-  (struck through) next to "counted now", and the table lists every report with the reason it was or
-  was not counted — including supersession and duplicate re-imports.
-- **Controls carry their own consequence.** The expansion option is disabled with the reason written
-  under it, and the backend refuses the same request with `422` if it is sent anyway.
-- **States are named.** Loading skeletons, an unknown-scope state, a retryable error state, an
-  insufficient-evidence verdict, `needs_attention` after a changed fingerprint, and explicit
-  "no report yet" copy. Nothing shows a spinner without saying what is happening.
+The first version of this interface failed the "can I see what to do?" test: a long column of
+equally weighted text cards, the decision form at the bottom, and a three-step tutorial explaining
+what the page should have made obvious. It was rebuilt around three rules.
+
+- **Two steps, visible at all times.** The case is `1 Record the decision` and `2 Client report`.
+  The decision card lives in a sticky right rail, so the action is never below the fold, and the
+  report is rendered by the server as part of the case instead of waiting behind a button. The
+  numbered badges carry the flow: no tutorial block, no tour library, no modal.
+- **Numbers before prose.** Four metric tiles open the case (active subscriptions, previous week,
+  week-over-week, decision) with the coverage caveat attached to each figure. The outcome is one
+  banner sentence derived from the failing check, so the headline and the evidence cannot disagree.
+- **Progressive disclosure instead of a wall of text.** "Where the numbers came from" and "Evidence
+  checks" are collapsed disclosures with a one-glance chip (`3 reports counted as one week`,
+  `1 of 6 blocking`) and open automatically only when something needs attention. The reconciliation
+  table inside is the detail, not the first thing you read.
+
+Affordances: every clickable surface has a hover state (scope rows shift and highlight, cards lift
+with a shadow, buttons lift and deepen, the segmented control shows its border and shadow), a
+`:focus-visible` ring for keyboard use, and `prefers-reduced-motion` disables the movement. Contrast
+and hit areas were checked at 1440px and 390px wide.
 
 ## Architecture, data flow, persistence, validation boundaries
 

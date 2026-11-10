@@ -6,7 +6,8 @@ export const number = (value: number | null | undefined): string =>
 
 export const day = (value: string | null | undefined): string => (value ? value.slice(0, 10) : '—');
 
-export const change = (value: number | null): string => (value === null ? 'Not comparable' : `${value}%`);
+export const change = (value: number | null): string =>
+  value === null ? 'Not comparable' : `${value > 0 ? '+' : ''}${value}%`;
 
 export const CHECK_LABELS: Record<string, string> = {
   import_fresh: 'Import freshness',
@@ -32,17 +33,8 @@ export function Chip({
   );
 }
 
-export function StatusChip({ view }: { view: CaseView }) {
-  if (view.attention) return <Chip tone="block">Requires attention</Chip>;
-  if (!view.decision) return <Chip tone="neutral">Open review</Chip>;
-  return view.decision.outcome === 'expand_promotion' ? (
-    <Chip tone="ok">Decision saved · expand</Chip>
-  ) : (
-    <Chip tone="warn">Decision saved · hold</Chip>
-  );
-}
-
-export function Figure({
+/** A number the user should read first. */
+export function Metric({
   label,
   value,
   note,
@@ -50,16 +42,38 @@ export function Figure({
 }: {
   label: string;
   value: string;
-  note: string;
-  tone?: 'default' | 'warn';
+  note?: string;
+  tone?: 'default' | 'warn' | 'block' | 'ok';
 }) {
   return (
-    <div className="figure">
-      <div className="figure__label">{label}</div>
-      <div className={`figure__value${value === 'Not comparable' ? ' figure__value--muted' : ''}`}>
+    <div className={`metric${tone === 'default' ? '' : ` metric--${tone}`}`}>
+      <span className="metric__label">{label}</span>
+      <span
+        className={`metric__value${value === 'Not comparable' || value === '—' ? ' metric__value--soft' : ''}`}
+      >
         {value}
-      </div>
-      <div className={`figure__note${tone === 'warn' ? ' figure__note--warn' : ''}`}>{note}</div>
+      </span>
+      {note ? <span className="metric__note">{note}</span> : null}
     </div>
+  );
+}
+
+/** Numbered marker used by the two action steps. */
+export function StepBadge({ step, done = false }: { step: number; done?: boolean }) {
+  return (
+    <span className={`step${done ? ' step--done' : ''}`} aria-hidden="true">
+      {done ? '✓' : step}
+    </span>
+  );
+}
+
+/** Case state, readable at a glance. */
+export function StatusChip({ view }: { view: CaseView }) {
+  if (view.attention) return <Chip tone="block">Requires attention</Chip>;
+  if (!view.decision) return <Chip tone="neutral">Not reviewed</Chip>;
+  return view.decision.outcome === 'expand_promotion' ? (
+    <Chip tone="ok">Saved · expand {view.decision.budgetChangePct}%</Chip>
+  ) : (
+    <Chip tone="warn">Saved · hold</Chip>
   );
 }
