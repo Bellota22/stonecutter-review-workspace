@@ -40,10 +40,20 @@ test('a saved decision survives stopping and restarting the solution', async () 
       assert.ok(reopened.decision, 'the decision is owned by the storage layer, not the browser session');
       assert.equal(reopened.decision.outcome, 'expand_promotion');
       assert.equal(reopened.decision.version, 1);
-      const events = await queryRows<{ type: string }>(second, 'SELECT type FROM review.event ORDER BY event_id');
-      assert.deepEqual(events.map(e => e.type), ['case_opened', 'decision_saved']);
-    } finally { await second.close(); }
-  } finally { await work.cleanup(); }
+      const events = await queryRows<{ type: string }>(
+        second,
+        'SELECT type FROM review.event ORDER BY event_id',
+      );
+      assert.deepEqual(
+        events.map((e) => e.type),
+        ['case_opened', 'decision_saved'],
+      );
+    } finally {
+      await second.close();
+    }
+  } finally {
+    await work.cleanup();
+  }
 });
 
 test('the backend refuses an expansion the evidence cannot support', async () => {
@@ -54,10 +64,16 @@ test('the backend refuses an expansion the evidence cannot support', async () =>
       const opened = await openCase(db, 'cedar-coast', 'US');
       assert.equal(opened.verdict.outcome, 'hold');
       await assert.rejects(
-        saveDecision(db, 'cedar-coast', 'US', { outcome: 'expand_promotion', reason: 'The model provider recommended a 20% expansion.' }),
+        saveDecision(db, 'cedar-coast', 'US', {
+          outcome: 'expand_promotion',
+          reason: 'The model provider recommended a 20% expansion.',
+        }),
         (error: unknown) => {
           assert.ok(error instanceof PolicyViolation, 'a policy violation, not a silent hold');
-          assert.ok(error.violations.some(v => /partial/i.test(v)), `violations name the coverage gap: ${error.violations}`);
+          assert.ok(
+            error.violations.some((v) => /partial/i.test(v)),
+            `violations name the coverage gap: ${error.violations}`,
+          );
           return true;
         },
       );
@@ -66,13 +82,21 @@ test('the backend refuses an expansion the evidence cannot support', async () =>
 
       // A held decision is always allowed to be recorded, with its limitations.
       const held = await saveDecision(db, 'cedar-coast', 'US', {
-        outcome: 'hold', reason: 'Current report covers only through 2026-10-02, so growth is not comparable.',
+        outcome: 'hold',
+        reason: 'Current report covers only through 2026-10-02, so growth is not comparable.',
       });
       assert.equal(held.decision.outcome, 'hold');
       assert.equal(held.decision.budgetChangePct, 0);
-      assert.ok(held.decision.limitations.some(l => /partial/i.test(l)), 'limitations are stored with the decision');
-    } finally { await db.close(); }
-  } finally { await work.cleanup(); }
+      assert.ok(
+        held.decision.limitations.some((l) => /partial/i.test(l)),
+        'limitations are stored with the decision',
+      );
+    } finally {
+      await db.close();
+    }
+  } finally {
+    await work.cleanup();
+  }
 });
 
 test('changed evidence marks the review as requiring attention instead of reusing the approval', async () => {
@@ -83,7 +107,8 @@ test('changed evidence marks the review as requiring attention instead of reusin
       const opened = await openCase(db, 'lumen-home', 'US');
       assert.equal(opened.evidence.growthPct, 15);
       await saveDecision(db, 'lumen-home', 'US', {
-        outcome: 'expand_promotion', reason: 'Complete, comparable snapshots for both weeks, 15% growth.',
+        outcome: 'expand_promotion',
+        reason: 'Complete, comparable snapshots for both weeks, 15% growth.',
       });
       const before = await generateReport(db, 'lumen-home', 'US');
       assert.equal(before.kind, 'ready');
@@ -100,7 +125,10 @@ test('changed evidence marks the review as requiring attention instead of reusin
       const after = await generateReport(db, 'lumen-home', 'US');
       assert.equal(after.kind, 'requires_attention', 'the old approval is not reused');
       if (after.kind !== 'requires_attention') return;
-      assert.ok(after.changes.some(c => c.includes('US-lumen-home-2026-09-28-g4')), `changes name the new report: ${after.changes}`);
+      assert.ok(
+        after.changes.some((c) => c.includes('US-lumen-home-2026-09-28-g4')),
+        `changes name the new report: ${after.changes}`,
+      );
 
       const reopened = await openCase(db, 'lumen-home', 'US');
       assert.equal(reopened.status, 'needs_attention');
@@ -108,11 +136,16 @@ test('changed evidence marks the review as requiring attention instead of reusin
 
       // Revalidating on the new evidence clears the attention state.
       await saveDecision(db, 'lumen-home', 'US', {
-        outcome: 'expand_promotion', reason: 'Revalidated after the publisher reissue; growth is now 10%.',
+        outcome: 'expand_promotion',
+        reason: 'Revalidated after the publisher reissue; growth is now 10%.',
       });
       assert.equal((await generateReport(db, 'lumen-home', 'US')).kind, 'ready');
-    } finally { await db.close(); }
-  } finally { await work.cleanup(); }
+    } finally {
+      await db.close();
+    }
+  } finally {
+    await work.cleanup();
+  }
 });
 
 test('every candidate report carries the reason it was not used', async () => {
@@ -121,14 +154,24 @@ test('every candidate report carries the reason it was not used', async () => {
     const db = await open(work.db);
     try {
       const cedar = await openCase(db, 'cedar-coast', 'US');
-      assert.equal(cedar.candidates.filter(c => c.verdict === 'selected').length, 1);
-      const rejected = cedar.candidates.filter(c => c.verdict === 'rejected');
+      assert.equal(cedar.candidates.filter((c) => c.verdict === 'selected').length, 1);
+      const rejected = cedar.candidates.filter((c) => c.verdict === 'rejected');
       assert.equal(rejected.length, 2);
-      assert.ok(rejected.every(c => c.reason.startsWith('Rejected:')), rejected.map(c => c.reason).join(' | '));
+      assert.ok(
+        rejected.every((c) => c.reason.startsWith('Rejected:')),
+        rejected.map((c) => c.reason).join(' | '),
+      );
 
       const harbor = await openCase(db, 'harbor-pantry', 'CA');
-      const reasons = harbor.candidates.map(c => `${c.publisherReportId}: ${c.reason}`);
-      assert.ok(reasons.some(r => /superseded/i.test(r)), `supersession is explained: ${reasons.join(' | ')}`);
-    } finally { await db.close(); }
-  } finally { await work.cleanup(); }
+      const reasons = harbor.candidates.map((c) => `${c.publisherReportId}: ${c.reason}`);
+      assert.ok(
+        reasons.some((r) => /superseded/i.test(r)),
+        `supersession is explained: ${reasons.join(' | ')}`,
+      );
+    } finally {
+      await db.close();
+    }
+  } finally {
+    await work.cleanup();
+  }
 });

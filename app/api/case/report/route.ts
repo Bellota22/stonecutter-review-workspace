@@ -16,10 +16,13 @@ export async function GET(request: Request) {
     return Response.json({ error: 'invalid_request', problems: ['brandId is required.'] }, { status: 400 });
   }
 
-  const result = await withDatabase(db => generateReport(db, brandId, marketplace));
+  const result = await withDatabase((db) => generateReport(db, brandId, marketplace));
   if (result.kind === 'ready') return Response.json({ kind: 'ready', report: result.report });
   if (result.kind === 'no_decision') {
-    return Response.json({ kind: 'no_decision', error: 'No decision has been saved for this case.' }, { status: 404 });
+    return Response.json(
+      { kind: 'no_decision', error: 'No decision has been saved for this case.' },
+      { status: 404 },
+    );
   }
   if (result.kind === 'requires_attention') {
     return Response.json({ kind: 'requires_attention', changes: result.changes }, { status: 409 });

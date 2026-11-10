@@ -20,28 +20,49 @@ export interface SourceReport {
 
 /** A named, human-readable evidence check. The decision policy reads these, the interface shows them. */
 export interface EvidenceCheck {
-  code: 'import_fresh' | 'current_complete' | 'previous_complete'
-      | 'current_reconciled' | 'previous_reconciled' | 'baseline_available';
+  code:
+    | 'import_fresh'
+    | 'current_complete'
+    | 'previous_complete'
+    | 'current_reconciled'
+    | 'previous_reconciled'
+    | 'baseline_available';
   ok: boolean;
   detail: string;
 }
 
 export interface Evidence {
-  brandId: string; brandName: string; marketplace: string;
-  periodStart: string; expectedPeriodEnd: string; asOf: string;
-  activeSubscriptions: number | null; previousSubscriptions: number | null;
-  growthPct: number | null; sourcePeriodEnd: string | null;
-  sourceComplete: boolean; sourceReports: string[]; ingestedAt: string | null;
-  previousSourceComplete: boolean; previousSourcePeriodEnd: string | null;
-  netSales: number; adSpend: number; attributedAdSales: number; roas: number | null;
+  brandId: string;
+  brandName: string;
+  marketplace: string;
+  periodStart: string;
+  expectedPeriodEnd: string;
+  asOf: string;
+  activeSubscriptions: number | null;
+  previousSubscriptions: number | null;
+  growthPct: number | null;
+  sourcePeriodEnd: string | null;
+  sourceComplete: boolean;
+  sourceReports: string[];
+  ingestedAt: string | null;
+  previousSourceComplete: boolean;
+  previousSourcePeriodEnd: string | null;
+  netSales: number;
+  adSpend: number;
+  attributedAdSales: number;
+  roas: number | null;
   inventoryUnits: number;
   sourceSnapshots: { reportId: string; activeSubscriptions: number }[];
-  sourceTotal?: number; reconciliationDelta?: number | null;
+  sourceTotal?: number;
+  reconciliationDelta?: number | null;
   currentReport: SourceReport | null;
   previousReport: SourceReport | null;
   checks?: EvidenceCheck[];
 }
-export interface Quality { status: 'ready' | 'insufficient'; reasons: string[] }
+export interface Quality {
+  status: 'ready' | 'insufficient';
+  reasons: string[];
+}
 /** Outcome the policy allows for the evidence. The model proposes; the policy decides. */
 export interface DecisionVerdict {
   outcome: Outcome;
@@ -50,15 +71,29 @@ export interface DecisionVerdict {
   summary: string;
 }
 export interface Recommendation {
-  action: Outcome; budgetChangePct: number;
-  narrative: string; citations: string[];
+  action: Outcome;
+  budgetChangePct: number;
+  narrative: string;
+  citations: string[];
 }
 export interface AnalystContext {
-  systemPolicy: string; evidence: Evidence; quality: Quality; documents: Document[];
+  systemPolicy: string;
+  evidence: Evidence;
+  quality: Quality;
+  documents: Document[];
 }
 export interface Report {
-  evidence: Evidence; quality: Quality; recommendation: Recommendation; verdict: DecisionVerdict;
-  trace: { sql: string; parameters: string[]; context: AnalystContext; proposal: Recommendation; validation: string[] };
+  evidence: Evidence;
+  quality: Quality;
+  recommendation: Recommendation;
+  verdict: DecisionVerdict;
+  trace: {
+    sql: string;
+    parameters: string[];
+    context: AnalystContext;
+    proposal: Recommendation;
+    validation: string[];
+  };
 }
 
 /** The calculation and checks stored with a decision, so the report can be explained later. */

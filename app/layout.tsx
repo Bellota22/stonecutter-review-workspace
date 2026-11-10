@@ -11,7 +11,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <a className="skip" href="#main">Skip to content</a>
+        <a className="skip" href="#main">
+          Skip to content
+        </a>
         <header className="masthead">
           <div className="brandmark">
             <strong>Stonecutter</strong>
@@ -19,7 +21,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="masthead__meta">
             <span>Reporting week 28 Sep – 4 Oct 2026</span>
-            <Link href="/" className="button button--ghost">All scopes</Link>
+            <Link href="/" className="button button--ghost">
+              All scopes
+            </Link>
           </div>
         </header>
         <div id="main">{children}</div>

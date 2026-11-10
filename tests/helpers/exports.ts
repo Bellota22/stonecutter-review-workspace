@@ -7,14 +7,16 @@ export const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 /** Minimal CSV reader for the bundled publisher exports (no embedded newlines or escaped quotes). */
 function parseCsv(text: string): string[][] {
   const lines = text.trim().split(/\r?\n/);
-  return lines.slice(1).map(line => {
+  return lines.slice(1).map((line) => {
     const cells: string[] = [];
     let cell = '';
     let quoted = false;
     for (const char of line) {
       if (char === '"') quoted = !quoted;
-      else if (char === ',' && !quoted) { cells.push(cell); cell = ''; }
-      else cell += char;
+      else if (char === ',' && !quoted) {
+        cells.push(cell);
+        cell = '';
+      } else cell += char;
     }
     cells.push(cell);
     return cells;
@@ -42,7 +44,7 @@ export async function loadExports(): Promise<{
   const reportsCsv = await readFile(path.join(ROOT, 'data/exports/subscription_reports.csv'), 'utf8');
   const offersCsv = await readFile(path.join(ROOT, 'data/exports/subscription_offers.csv'), 'utf8');
 
-  const reports: ExportReport[] = parseCsv(reportsCsv).map(cells => {
+  const reports: ExportReport[] = parseCsv(reportsCsv).map((cells) => {
     const [publisherReportId, brandId, marketplace, periodStart, periodEnd, status] = cells;
     const supersededBy = cells[7] ?? '';
     return {

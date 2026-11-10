@@ -18,7 +18,10 @@
     "setup": "node --import tsx scripts/python.ts setup",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "npm run format:check && npm run typecheck && npm test"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.9",
@@ -30,6 +33,7 @@
     "@types/node": "22.19.15",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "prettier": "3.9.10",
     "tsx": "4.23.15",
     "typescript": "5.9.3"
   }

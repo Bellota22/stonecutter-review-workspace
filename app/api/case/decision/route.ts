@@ -48,9 +48,12 @@ function parseDecisionInput(body: unknown): DecisionInput | string[] {
 
 function statusFor(code: CaseError['code']): number {
   switch (code) {
-    case 'policy_violation': return 422;
-    case 'invalid_request': return 400;
-    case 'no_decision': return 404;
+    case 'policy_violation':
+      return 422;
+    case 'invalid_request':
+      return 400;
+    case 'no_decision':
+      return 404;
   }
 }
 
@@ -63,7 +66,10 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: 'invalid_request', details: ['A JSON body is required.'] }, { status: 400 });
+    return Response.json(
+      { error: 'invalid_request', details: ['A JSON body is required.'] },
+      { status: 400 },
+    );
   }
 
   const parsed = parseDecisionInput(body);
@@ -72,19 +78,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    const decision = await withDatabase(db => saveDecision(db, parsed.brandId, parsed.marketplace, {
-      outcome: parsed.outcome,
-      reason: parsed.reason,
-    }));
-    return Response.json({
-      decisionId: decision.decision.decisionId,
-      version: decision.decision.version,
-      outcome: decision.decision.outcome,
-      budgetChangePct: decision.decision.budgetChangePct,
-      limitations: decision.decision.limitations,
-      evidenceFingerprint: decision.decision.evidenceFingerprint,
-      scope: { brandId: decision.view.scope.brandId, marketplace: decision.view.scope.marketplace },
-    }, { status: 201 });
+    const decision = await withDatabase((db) =>
+      saveDecision(db, parsed.brandId, parsed.marketplace, {
+        outcome: parsed.outcome,
+        reason: parsed.reason,
+      }),
+    );
+    return Response.json(
+      {
+        decisionId: decision.decision.decisionId,
+        version: decision.decision.version,
+        outcome: decision.decision.outcome,
+        budgetChangePct: decision.decision.budgetChangePct,
+        limitations: decision.decision.limitations,
+        evidenceFingerprint: decision.decision.evidenceFingerprint,
+        scope: { brandId: decision.view.scope.brandId, marketplace: decision.view.scope.marketplace },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof CaseError) {
       return Response.json({ error: error.code, details: error.details }, { status: statusFor(error.code) });

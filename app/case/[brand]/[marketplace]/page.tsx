@@ -15,14 +15,18 @@ import { day } from '../../../components/primitives.tsx';
 
 export const dynamic = 'force-dynamic';
 
-export default async function CasePage({ params }: { params: Promise<{ brand: string; marketplace: string }> }) {
+export default async function CasePage({
+  params,
+}: {
+  params: Promise<{ brand: string; marketplace: string }>;
+}) {
   const { brand, marketplace } = await params;
-  const scopes = await withDatabase(db => listScopes(db));
-  const states = await withDatabase(db => listCaseStates(db));
+  const scopes = await withDatabase((db) => listScopes(db));
+  const states = await withDatabase((db) => listCaseStates(db));
 
   let view;
   try {
-    view = await withDatabase(db => openCase(db, brand, marketplace.toUpperCase()));
+    view = await withDatabase((db) => openCase(db, brand, marketplace.toUpperCase()));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The scope could not be opened.';
     return (
@@ -32,7 +36,9 @@ export default async function CasePage({ params }: { params: Promise<{ brand: st
           <div className="state">
             <h2>This scope could not be opened</h2>
             <p>{message}</p>
-            <Link className="button" href="/">Choose another scope</Link>
+            <Link className="button" href="/">
+              Choose another scope
+            </Link>
           </div>
         </section>
       </main>
@@ -47,7 +53,10 @@ export default async function CasePage({ params }: { params: Promise<{ brand: st
         <div className="pagehead">
           <div>
             <h1 className="tight">
-              {view.scope.brandName} <span className="muted" style={{ fontWeight: 400 }}>· {view.scope.marketplace}</span>
+              {view.scope.brandName}{' '}
+              <span className="muted" style={{ fontWeight: 400 }}>
+                · {view.scope.marketplace}
+              </span>
             </h1>
             <p className="pagehead__sub">
               Week of {day(view.scope.periodStart)} to {day(view.scope.expectedPeriodEnd)} · case{' '}

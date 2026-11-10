@@ -2,7 +2,11 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ROOT } from './database.ts';
 
-export interface Document { id: string; source: string; text: string }
+export interface Document {
+  id: string;
+  source: string;
+  text: string;
+}
 
 export async function retrieveKnowledge(brandId: string): Promise<Document[]> {
   const dir = path.join(ROOT, 'data', 'knowledge');

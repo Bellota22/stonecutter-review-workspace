@@ -8,7 +8,9 @@ export function ChecksList({ view }: { view: CaseView }) {
     <section className="card" aria-labelledby="checks-heading">
       <div className="card__head">
         <div>
-          <h2 className="card__title" id="checks-heading">Evidence checks</h2>
+          <h2 className="card__title" id="checks-heading">
+            Evidence checks
+          </h2>
           <p className="card__hint">
             Growth is only computed when every check holds. Missing or truncated evidence is treated as
             unknown, never as zero.
@@ -16,9 +18,12 @@ export function ChecksList({ view }: { view: CaseView }) {
         </div>
       </div>
       <div className="checks">
-        {checks.map(check => (
+        {checks.map((check) => (
           <div className="check" key={check.code}>
-            <span className={`check__mark ${check.ok ? 'check__mark--ok' : 'check__mark--fail'}`} aria-hidden="true">
+            <span
+              className={`check__mark ${check.ok ? 'check__mark--ok' : 'check__mark--fail'}`}
+              aria-hidden="true"
+            >
               {check.ok ? '✓' : '✗'}
             </span>
             <span className="check__label">

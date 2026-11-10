@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     return Response.json({ error: 'invalid_request', problems: ['brandId is required.'] }, { status: 400 });
   }
   try {
-    const view = await withDatabase(db => openCase(db, brandId, marketplace));
+    const view = await withDatabase((db) => openCase(db, brandId, marketplace));
     return Response.json(view);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

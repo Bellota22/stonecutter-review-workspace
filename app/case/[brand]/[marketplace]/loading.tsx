@@ -9,9 +9,21 @@ export default function CaseLoading() {
       </div>
       <div className="stack">
         <div className="skeleton" style={{ height: 30, width: '40%' }} />
-        <div className="card"><div className="card__body"><div className="skeleton" style={{ height: 60 }} /></div></div>
-        <div className="card"><div className="card__body"><div className="skeleton" style={{ height: 120 }} /></div></div>
-        <div className="card"><div className="card__body"><div className="skeleton" style={{ height: 200 }} /></div></div>
+        <div className="card">
+          <div className="card__body">
+            <div className="skeleton" style={{ height: 60 }} />
+          </div>
+        </div>
+        <div className="card">
+          <div className="card__body">
+            <div className="skeleton" style={{ height: 120 }} />
+          </div>
+        </div>
+        <div className="card">
+          <div className="card__body">
+            <div className="skeleton" style={{ height: 200 }} />
+          </div>
+        </div>
       </div>
     </main>
   );

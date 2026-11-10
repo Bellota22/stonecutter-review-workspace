@@ -43,7 +43,9 @@ CLI equivalents used for verification:
 npm run report -- --brand cedar-coast --json   # evidence, checks, verdict, recommendation
 npm run demo                                  # human-readable summary
 npm test                                      # 14 TypeScript + 7 Python checks
-npm run typecheck
+npm run typecheck                             # strict TypeScript, no unchecked index access
+npm run format:check                          # Prettier
+npm run verify                                # format:check + typecheck + test
 ```
 
 ## What did not reconcile, and the verified result
@@ -123,6 +125,20 @@ fingerprint no longer matches, so an old approval is never reused.
 Validation boundaries: request shape at the route handler (`400`), policy on freshly derived evidence
 (`422`), evidence fitness inside `reconcile.py`, and record integrity in the database (`CHECK`
 constraints on outcome, budget and status).
+
+## Code quality and typing
+
+- TypeScript runs in `strict` mode with `noUncheckedIndexedAccess`, `noImplicitOverride`,
+  `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters` and `noImplicitReturns`.
+- Prettier formats the source (`npm run format`, checked by `npm run format:check`). Markdown and the
+  bundled fixture are excluded on purpose: the assessment documents stay as delivered, and `data/` is a
+  fixed contract that must not be reformatted.
+- `src/domain/*` is pure and holds the vocabulary (outcomes, case statuses), the selection explanation,
+  the evidence diff and the client report. `src/server/*` owns I/O. The SQL `CHECK` constraints are
+  generated from the same vocabulary, so the schema cannot drift from the code.
+- Every untrusted boundary is narrowed rather than cast: the Python bridge validates the JSON it
+  receives, decision rows narrow their jsonb columns once in the store, and the API parses its body
+  with small read helpers that return the problems instead of throwing.
 
 ## Tests that support these claims
 

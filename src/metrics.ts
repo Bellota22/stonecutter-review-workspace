@@ -60,7 +60,12 @@ function toSourceReport(row: SnapshotRow): SourceReport {
 }
 
 /** The report the mart counted for one week, with the publisher totals used to verify it. */
-async function loadSnapshot(db: PGlite, brandId: string, marketplace: string, periodStart: string): Promise<SnapshotRow | null> {
+async function loadSnapshot(
+  db: PGlite,
+  brandId: string,
+  marketplace: string,
+  periodStart: string,
+): Promise<SnapshotRow | null> {
   const [row] = await queryRows<SnapshotRow>(db, SNAPSHOT_SQL, [brandId, marketplace, periodStart]);
   return row ?? null;
 }
@@ -73,9 +78,23 @@ interface ContextTotals {
 }
 
 async function loadContext(db: PGlite, brandId: string, marketplace: string): Promise<ContextTotals> {
-  const [sales] = await queryRows<{ total: string }>(db, SALES_SQL, [brandId, marketplace, PERIOD_START, PERIOD_END]);
-  const [ads] = await queryRows<{ spend: string; sales: string }>(db, ADS_SQL, [brandId, marketplace, PERIOD_START, PERIOD_END]);
-  const [inventory] = await queryRows<{ units: string }>(db, INVENTORY_SQL, [brandId, marketplace, PERIOD_END]);
+  const [sales] = await queryRows<{ total: string }>(db, SALES_SQL, [
+    brandId,
+    marketplace,
+    PERIOD_START,
+    PERIOD_END,
+  ]);
+  const [ads] = await queryRows<{ spend: string; sales: string }>(db, ADS_SQL, [
+    brandId,
+    marketplace,
+    PERIOD_START,
+    PERIOD_END,
+  ]);
+  const [inventory] = await queryRows<{ units: string }>(db, INVENTORY_SQL, [
+    brandId,
+    marketplace,
+    PERIOD_END,
+  ]);
   return {
     netSales: Number(sales?.total ?? 0),
     adSpend: Number(ads?.spend ?? 0),
@@ -85,7 +104,9 @@ async function loadContext(db: PGlite, brandId: string, marketplace: string): Pr
 }
 
 export async function getEvidence(db: PGlite, brandId: string, marketplace = 'US'): Promise<Evidence> {
-  const [brand] = await queryRows<{ name: string }>(db, 'SELECT name FROM brands WHERE brand_id = $1', [brandId]);
+  const [brand] = await queryRows<{ name: string }>(db, 'SELECT name FROM brands WHERE brand_id = $1', [
+    brandId,
+  ]);
   if (!brand) throw new Error(`Unknown brand: ${brandId}. Query SELECT * FROM brands to see valid IDs.`);
 
   const current = await loadSnapshot(db, brandId, marketplace, PERIOD_START);
@@ -104,7 +125,9 @@ export async function getEvidence(db: PGlite, brandId: string, marketplace = 'US
     activeSubscriptions: current?.mart_subscriptions ?? null,
     previousSubscriptions: previous?.mart_subscriptions ?? null,
     growthPct: null,
-    sourceSnapshots: current ? [{ reportId: current.report_id, activeSubscriptions: current.loaded_subscriptions }] : [],
+    sourceSnapshots: current
+      ? [{ reportId: current.report_id, activeSubscriptions: current.loaded_subscriptions }]
+      : [],
     sourcePeriodEnd: current?.period_end ?? null,
     sourceComplete: current?.status === 'complete',
     sourceReports: current ? [current.report_id] : [],
@@ -114,7 +137,7 @@ export async function getEvidence(db: PGlite, brandId: string, marketplace = 'US
     netSales: context.netSales,
     adSpend: context.adSpend,
     attributedAdSales: context.attributedAdSales,
-    roas: context.adSpend > 0 ? Math.round(context.attributedAdSales / context.adSpend * 100) / 100 : null,
+    roas: context.adSpend > 0 ? Math.round((context.attributedAdSales / context.adSpend) * 100) / 100 : null,
     inventoryUnits: context.inventoryUnits,
     currentReport,
     previousReport,
@@ -126,9 +149,14 @@ export async function getEvidence(db: PGlite, brandId: string, marketplace = 'US
  * The selection itself lives in sql/select-reports.sql; this read exists to explain it.
  */
 export async function listCandidates(
-  db: PGlite, brandId: string, marketplace: string, periodStart: string,
+  db: PGlite,
+  brandId: string,
+  marketplace: string,
+  periodStart: string,
 ): Promise<CandidateReport[]> {
-  const rows = await queryRows<SnapshotRow & { selected: boolean }>(db, `
+  const rows = await queryRows<SnapshotRow & { selected: boolean }>(
+    db,
+    `
     SELECT r.report_id, r.publisher_report_id, r.status, r.period_start::text AS period_start,
            r.period_end::text AS period_end, r.generated_at::text AS generated_at,
            r.extracted_at::text AS extracted_at,
@@ -141,15 +169,21 @@ export async function listCandidates(
     LEFT JOIN marts.subscription_weekly w
       ON w.brand_id = r.brand_id AND w.marketplace = r.marketplace AND w.period_start = r.period_start
     WHERE r.brand_id = $1 AND r.marketplace = $2 AND r.period_start = $3::date
-    ORDER BY r.revision`, [brandId, marketplace, periodStart]);
+    ORDER BY r.revision`,
+    [brandId, marketplace, periodStart],
+  );
 
-  return rows.map(row => ({ ...toSourceReport(row), selected: row.selected }));
+  return rows.map((row) => ({ ...toSourceReport(row), selected: row.selected }));
 }
 
 /** Every scope in the fixture, for the review workflow's scope picker. */
-export async function listScopes(db: PGlite): Promise<{ brandId: string; brandName: string; marketplace: string }[]> {
-  return queryRows<{ brandId: string; brandName: string; marketplace: string }>(db,
+export async function listScopes(
+  db: PGlite,
+): Promise<{ brandId: string; brandName: string; marketplace: string }[]> {
+  return queryRows<{ brandId: string; brandName: string; marketplace: string }>(
+    db,
     `SELECT b.brand_id AS "brandId", b.name AS "brandName", s.marketplace
      FROM brands b JOIN (SELECT DISTINCT brand_id, marketplace FROM raw.subscription_reports) s USING (brand_id)
-     ORDER BY b.name, s.marketplace`);
+     ORDER BY b.name, s.marketplace`,
+  );
 }

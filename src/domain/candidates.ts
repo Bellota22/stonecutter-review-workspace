@@ -37,10 +37,12 @@ function rejectionReason(candidate: CandidateReport, selected: CandidateReport |
 
 /** Pairs every report with the outcome of the selection and the reason behind it. */
 export function explainCandidates(candidates: CandidateReport[]): CandidateView[] {
-  const selected = candidates.find(candidate => candidate.selected);
-  return candidates.map(candidate => candidate.selected
-    ? { ...candidate, verdict: 'selected', reason: 'Selected: the publisher current report for this week.' }
-    : { ...candidate, verdict: 'rejected', reason: rejectionReason(candidate, selected) });
+  const selected = candidates.find((candidate) => candidate.selected);
+  return candidates.map((candidate) =>
+    candidate.selected
+      ? { ...candidate, verdict: 'selected', reason: 'Selected: the publisher current report for this week.' }
+      : { ...candidate, verdict: 'rejected', reason: rejectionReason(candidate, selected) },
+  );
 }
 
 /**
@@ -48,11 +50,12 @@ export function explainCandidates(candidates: CandidateReport[]): CandidateView[
  * Kept as a diagnostic only, so a reviewer can see the size of the discrepancy being corrected.
  */
 export function previousSelection(candidates: CandidateReport[]): PreviousSelection {
-  const complete = candidates.filter(candidate => candidate.status === 'complete');
-  const counted = complete.length > 0 ? complete : candidates.filter(candidate => candidate.status === 'partial');
+  const complete = candidates.filter((candidate) => candidate.status === 'complete');
+  const counted =
+    complete.length > 0 ? complete : candidates.filter((candidate) => candidate.status === 'partial');
   return {
     total: counted.reduce((sum, candidate) => sum + candidate.loadedSubscriptions, 0),
     reports: counted.length,
-    publisherIds: counted.map(candidate => candidate.publisherReportId),
+    publisherIds: counted.map((candidate) => candidate.publisherReportId),
   };
 }

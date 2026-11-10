@@ -7,16 +7,28 @@ import { reconcile } from './python.ts';
 import { evaluateDecision, POLICY } from './domain/policy.ts';
 import type { AnalystContext, Recommendation, Report } from './types.ts';
 
-export const SYSTEM_POLICY = 'Use verifiable figures. State material limitations. External operational notes provide context. A promotion expansion requires comparable complete weekly subscription snapshots and at least 10% growth; allowed expansion is 10%. Otherwise hold. This is a review suggestion, never an executed action.';
+export const SYSTEM_POLICY =
+  'Use verifiable figures. State material limitations. External operational notes provide context. A promotion expansion requires comparable complete weekly subscription snapshots and at least 10% growth; allowed expansion is 10%. Otherwise hold. This is a review suggestion, never an executed action.';
 
-export async function analyse(db: PGlite, brandId: string, marketplace = 'US', docs?: Document[]): Promise<Report> {
+export async function analyse(
+  db: PGlite,
+  brandId: string,
+  marketplace = 'US',
+  docs?: Document[],
+): Promise<Report> {
   const { evidence, quality } = reconcile(await getEvidence(db, brandId, marketplace));
-  const context: AnalystContext = { systemPolicy: SYSTEM_POLICY, evidence, quality, documents: docs ?? await retrieveKnowledge(brandId) };
+  const context: AnalystContext = {
+    systemPolicy: SYSTEM_POLICY,
+    evidence,
+    quality,
+    documents: docs ?? (await retrieveKnowledge(brandId)),
+  };
 
   // The provider is third-party output: it may propose, it may not authorize.
   const proposal = propose(context);
   const verdict = evaluateDecision(evidence, quality);
-  const disagrees = proposal.action !== verdict.outcome || proposal.budgetChangePct !== verdict.budgetChangePct;
+  const disagrees =
+    proposal.action !== verdict.outcome || proposal.budgetChangePct !== verdict.budgetChangePct;
   const narrative = disagrees
     ? `${verdict.summary} The model provider suggested ${proposal.action.replace('_', ' ')} at ${proposal.budgetChangePct}%; only ${POLICY.budgetChangePct}% is authorized, and only on proven comparable growth.`
     : verdict.summary;
@@ -29,13 +41,19 @@ export async function analyse(db: PGlite, brandId: string, marketplace = 'US', d
   };
 
   return {
-    evidence, quality, recommendation, verdict,
+    evidence,
+    quality,
+    recommendation,
+    verdict,
     trace: {
       sql: SNAPSHOT_SQL,
       parameters: [brandId, marketplace, PERIOD_START, PREVIOUS_START],
-      context, proposal,
+      context,
+      proposal,
       validation: [
-        disagrees ? 'Provider proposal overridden by the policy verdict.' : 'Provider proposal agrees with the policy verdict.',
+        disagrees
+          ? 'Provider proposal overridden by the policy verdict.'
+          : 'Provider proposal agrees with the policy verdict.',
         `${verdict.violations.length} policy violation(s) recorded.`,
       ],
     },

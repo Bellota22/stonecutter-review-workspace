@@ -14,4 +14,7 @@ try {
   } else {
     run(pythonCommand(), ['-m', 'pytest', ...process.argv.slice(3)]);
   }
-} catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
+}

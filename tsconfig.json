@@ -7,9 +7,7 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "jsx": "preserve",
     "allowJs": false,
     "incremental": true,
@@ -18,11 +16,7 @@
         "name": "next"
       }
     ],
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -44,7 +38,5 @@
     "tests/**/*.ts",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

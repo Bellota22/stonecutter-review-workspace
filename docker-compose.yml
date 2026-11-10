@@ -11,7 +11,7 @@ services:
     init: true
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
       - review-runtime:/app/.runtime
 

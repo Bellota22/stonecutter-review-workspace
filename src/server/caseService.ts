@@ -3,20 +3,35 @@ import { PERIOD_END, PERIOD_START, rebuildMetrics } from '../database.ts';
 import { getEvidence, listCandidates } from '../metrics.ts';
 import { reconcile } from '../python.ts';
 import { POLICY, evaluateDecision, evidenceFingerprint } from '../domain/policy.ts';
-import { explainCandidates, previousSelection, type CandidateView, type PreviousSelection } from '../domain/candidates.ts';
+import {
+  explainCandidates,
+  previousSelection,
+  type CandidateView,
+  type PreviousSelection,
+} from '../domain/candidates.ts';
 import { compareEvidence, material } from '../domain/evidence.ts';
 import { buildClientReport, type ClientReport, type ReportSource } from '../domain/clientReport.ts';
 import type { CaseStatus, DecisionVerdict, Evidence, Quality } from '../types.ts';
 import {
-  appendDecision, appendEvent, ensureCase, latestDecision, setCaseStatus,
-  type CaseRow, type DecisionRow, type Scope,
+  appendDecision,
+  appendEvent,
+  ensureCase,
+  latestDecision,
+  setCaseStatus,
+  type CaseRow,
+  type DecisionRow,
+  type Scope,
 } from './reviewStore.ts';
 
 export type FailureCode = 'policy_violation' | 'invalid_request' | 'no_decision';
 
 /** An expected failure with a stable code, so the API can map it to a status without guessing. */
 export class CaseError extends Error {
-  constructor(readonly code: FailureCode, message: string, readonly details: string[] = []) {
+  constructor(
+    readonly code: FailureCode,
+    message: string,
+    readonly details: string[] = [],
+  ) {
     super(message);
     this.name = 'CaseError';
   }
@@ -50,7 +65,13 @@ export interface CaseView {
   status: CaseStatus;
   createdAt: string;
   updatedAt: string;
-  scope: { brandId: string; brandName: string; marketplace: string; periodStart: string; expectedPeriodEnd: string };
+  scope: {
+    brandId: string;
+    brandName: string;
+    marketplace: string;
+    periodStart: string;
+    expectedPeriodEnd: string;
+  };
   evidence: Evidence;
   quality: Quality;
   verdict: DecisionVerdict;
@@ -91,10 +112,18 @@ export async function openCase(db: PGlite, brandId: string, marketplace: string)
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     scope: {
-      brandId, brandName: evidence.brandName, marketplace,
-      periodStart: PERIOD_START, expectedPeriodEnd: PERIOD_END,
+      brandId,
+      brandName: evidence.brandName,
+      marketplace,
+      periodStart: PERIOD_START,
+      expectedPeriodEnd: PERIOD_END,
     },
-    evidence, quality, verdict, fingerprint, candidates, decision,
+    evidence,
+    quality,
+    verdict,
+    fingerprint,
+    candidates,
+    decision,
     attention: attention.changes ? { changes: attention.changes } : null,
     previousSelection: counted.total === evidence.activeSubscriptions ? null : counted,
   };
@@ -106,7 +135,11 @@ export async function openCase(db: PGlite, brandId: string, marketplace: string)
  * the mark is removed.
  */
 async function reconcileAttention(
-  db: PGlite, row: CaseRow, decision: DecisionRow | null, evidence: Evidence, fingerprint: string,
+  db: PGlite,
+  row: CaseRow,
+  decision: DecisionRow | null,
+  evidence: Evidence,
+  fingerprint: string,
 ): Promise<{ row: CaseRow; changes: string[] | null }> {
   if (!decision) return { row, changes: null };
 
@@ -125,9 +158,15 @@ async function reconcileAttention(
   return { row, changes: null };
 }
 
-export async function saveDecision(db: PGlite, brandId: string, marketplace: string, input: {
-  outcome: DecisionVerdict['outcome']; reason: string;
-}): Promise<{ decision: DecisionRow; view: CaseView }> {
+export async function saveDecision(
+  db: PGlite,
+  brandId: string,
+  marketplace: string,
+  input: {
+    outcome: DecisionVerdict['outcome'];
+    reason: string;
+  },
+): Promise<{ decision: DecisionRow; view: CaseView }> {
   const view = await openCase(db, brandId, marketplace);
   const reason = input.reason.trim();
   if (reason.length < POLICY.minimumReasonCharacters) {
@@ -136,9 +175,11 @@ export async function saveDecision(db: PGlite, brandId: string, marketplace: str
     ]);
   }
   if (input.outcome === 'expand_promotion' && view.verdict.outcome !== 'expand_promotion') {
-    throw new PolicyViolation(view.verdict.violations.length > 0
-      ? view.verdict.violations
-      : ['The evidence does not support an expansion.']);
+    throw new PolicyViolation(
+      view.verdict.violations.length > 0
+        ? view.verdict.violations
+        : ['The evidence does not support an expansion.'],
+    );
   }
 
   const decision = await appendDecision(db, {
@@ -161,7 +202,9 @@ export async function saveDecision(db: PGlite, brandId: string, marketplace: str
 
   await setCaseStatus(db, view.caseId, 'decided');
   await appendEvent(db, view.caseId, 'decision_saved', {
-    version: decision.version, outcome: decision.outcome, budgetChangePct: decision.budgetChangePct,
+    version: decision.version,
+    outcome: decision.outcome,
+    budgetChangePct: decision.budgetChangePct,
     fingerprint: view.fingerprint,
   });
   return { decision, view: await openCase(db, brandId, marketplace) };
@@ -170,7 +213,7 @@ export async function saveDecision(db: PGlite, brandId: string, marketplace: str
 function sourcesOf(evidence: Evidence): ReportSource[] {
   return [evidence.currentReport, evidence.previousReport]
     .filter((report): report is NonNullable<typeof report> => report !== null)
-    .map(report => ({
+    .map((report) => ({
       reportId: report.reportId,
       publisherReportId: report.publisherReportId,
       status: report.status,
@@ -179,7 +222,11 @@ function sourcesOf(evidence: Evidence): ReportSource[] {
 }
 
 /** The client report is generated from the saved decision, and only while its evidence still holds. */
-export async function generateReport(db: PGlite, brandId: string, marketplace: string): Promise<ReportResult> {
+export async function generateReport(
+  db: PGlite,
+  brandId: string,
+  marketplace: string,
+): Promise<ReportResult> {
   const view = await openCase(db, brandId, marketplace);
   if (!view.decision) return { kind: 'no_decision' };
   if (view.attention) return { kind: 'requires_attention', changes: view.attention.changes };

@@ -1,0 +1,19 @@
+# Generated and installed output
+node_modules/
+.next/
+.runtime/
+.venv/
+__pycache__/
+.pytest_cache/
+*.tsbuildinfo
+next-env.d.ts
+
+# The bundled fixture and the publisher exports are a fixed contract: never reformat them
+data/
+
+# Lockfiles and download metadata are not hand-written source
+package-lock.json
+*:Zone.Identifier
+
+# The assessment documents are delivered as received; formatting them would bury the real diff
+*.md

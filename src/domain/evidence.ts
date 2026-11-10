@@ -51,7 +51,5 @@ export function compareEvidence(stored: EvidenceMaterial, current: Evidence): st
   push('Previous week snapshot', stored.previous, now.previous);
   push('Active subscriptions', stored.activeSubscriptions, now.activeSubscriptions);
   push('Previous subscriptions', stored.previousSubscriptions, now.previousSubscriptions);
-  return changes.length > 0
-    ? changes
-    : ['The evidence changed without a difference in the recorded fields.'];
+  return changes.length > 0 ? changes : ['The evidence changed without a difference in the recorded fields.'];
 }

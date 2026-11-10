@@ -8,5 +8,5 @@ export type CaseStatus = (typeof CASE_STATUSES)[number];
 
 /** Quoted list for a SQL IN (...) clause, so the database and the code share one vocabulary. */
 export function sqlList(values: readonly string[]): string {
-  return values.map(value => `'${value.replaceAll("'", "''")}'`).join(', ');
+  return values.map((value) => `'${value.replaceAll("'", "''")}'`).join(', ');
 }

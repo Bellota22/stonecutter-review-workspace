@@ -40,7 +40,7 @@ export function nextStep(evidence: Evidence, verdict: DecisionVerdict): string {
     return `Share the verified result and propose a ${POLICY.budgetChangePct}% expansion as a draft for the brand manager.`;
   }
   const failing = (code: string): boolean =>
-    (evidence.checks ?? []).some(check => check.code === code && !check.ok);
+    (evidence.checks ?? []).some((check) => check.code === code && !check.ok);
   if (failing('current_complete')) {
     return `Request the complete publisher report for the week ending ${day(evidence.expectedPeriodEnd)} before restating week-over-week growth.`;
   }
@@ -72,14 +72,17 @@ export function buildClientReport(input: ReportInput): ClientReport {
       {
         label: 'Previous week',
         value: number(evidence.previousSubscriptions),
-        note: evidence.previousReport ? `through ${day(evidence.previousReport.periodEnd)}` : 'no report selected',
+        note: evidence.previousReport
+          ? `through ${day(evidence.previousReport.periodEnd)}`
+          : 'no report selected',
       },
       {
         label: 'Week-over-week change',
         value: evidence.growthPct === null ? 'Not comparable' : `${evidence.growthPct}%`,
-        note: evidence.growthPct === null
-          ? 'the two weeks cannot be compared'
-          : `policy needs ${POLICY.minimumGrowthPct}%`,
+        note:
+          evidence.growthPct === null
+            ? 'the two weeks cannot be compared'
+            : `policy needs ${POLICY.minimumGrowthPct}%`,
       },
     ],
     limitations: input.limitations,

@@ -34,9 +34,10 @@ export function evaluateDecision(evidence: Evidence, quality: Quality): Decision
     outcome,
     budgetChangePct: outcome === 'expand_promotion' ? POLICY.budgetChangePct : 0,
     violations,
-    summary: outcome === 'expand_promotion'
-      ? `Complete, comparable growth of ${growth}% supports a ${POLICY.budgetChangePct}% promotion expansion suggestion.`
-      : 'Hold the promotion until complete, verified and comparable weekly snapshots support a growth claim.',
+    summary:
+      outcome === 'expand_promotion'
+        ? `Complete, comparable growth of ${growth}% supports a ${POLICY.budgetChangePct}% promotion expansion suggestion.`
+        : 'Hold the promotion until complete, verified and comparable weekly snapshots support a growth claim.',
   };
 }
 

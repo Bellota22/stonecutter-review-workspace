@@ -14,7 +14,9 @@ export function projectRoot(): string {
       const candidate = path.resolve(decodeURIComponent(new URL(meta.url).pathname), '..');
       if (existsSync(path.join(candidate, 'package.json'))) return candidate;
     }
-  } catch { /* fall through to the working directory */ }
+  } catch {
+    /* fall through to the working directory */
+  }
   return process.cwd();
 }
 
@@ -24,12 +26,16 @@ export const PERIOD_START = '2026-09-28';
 export const PERIOD_END = '2026-10-04';
 export const PREVIOUS_START = '2026-09-21';
 
-export async function openDatabase(memory = false, runtime = path.join(ROOT, '.runtime', 'marketplace')): Promise<PGlite> {
+export async function openDatabase(
+  memory = false,
+  runtime = path.join(ROOT, '.runtime', 'marketplace'),
+): Promise<PGlite> {
   if (!memory) await mkdir(path.dirname(runtime), { recursive: true });
   let initialized = false;
   if (!memory) {
-    try { initialized = (await stat(path.join(runtime, 'PG_VERSION'))).isFile(); }
-    catch (error) {
+    try {
+      initialized = (await stat(path.join(runtime, 'PG_VERSION'))).isFile();
+    } catch (error) {
       if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error;
     }
   }
@@ -45,9 +51,10 @@ export async function openDatabase(memory = false, runtime = path.join(ROOT, '.r
 
 export async function rebuildMetrics(db: PGlite, asOf = AS_OF): Promise<void> {
   const selection = await readFile(path.join(ROOT, 'sql', 'select-reports.sql'), 'utf8');
-  await db.transaction(async tx => {
+  await db.transaction(async (tx) => {
     await tx.exec('DELETE FROM marts.subscription_weekly');
-    await tx.query(`
+    await tx.query(
+      `
       INSERT INTO marts.subscription_weekly
       SELECT r.brand_id, r.marketplace, r.period_start,
              SUM(o.active_subscriptions), MAX(r.period_end), BOOL_AND(r.status = 'complete'),
@@ -55,7 +62,9 @@ export async function rebuildMetrics(db: PGlite, asOf = AS_OF): Promise<void> {
       FROM (${selection}) r
       JOIN raw.subscription_offers o USING (report_id)
       GROUP BY r.brand_id, r.marketplace, r.period_start
-    `, [asOf]);
+    `,
+      [asOf],
+    );
   });
 }
 
