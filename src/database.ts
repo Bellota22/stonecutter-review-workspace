@@ -1,9 +1,24 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFile, mkdir, stat } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
-export const ROOT = fileURLToPath(new URL('../', import.meta.url));
+/**
+ * Project root. Resolved from the module location when it is a real file URL (CLI and tests) and
+ * from the working directory otherwise, because a bundled server chunk has no usable module path.
+ */
+export function projectRoot(): string {
+  try {
+    const meta = import.meta as { url?: string };
+    if (meta?.url?.startsWith('file:')) {
+      const candidate = path.resolve(decodeURIComponent(new URL(meta.url).pathname), '..');
+      if (existsSync(path.join(candidate, 'package.json'))) return candidate;
+    }
+  } catch { /* fall through to the working directory */ }
+  return process.cwd();
+}
+
+export const ROOT = projectRoot();
 export const AS_OF = '2026-10-06T12:00:00Z';
 export const PERIOD_START = '2026-09-28';
 export const PERIOD_END = '2026-10-04';

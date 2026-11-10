@@ -90,3 +90,30 @@ export async function listScopes(db: PGlite): Promise<{ brandId: string; brandNa
      FROM brands b JOIN (SELECT DISTINCT brand_id, marketplace FROM raw.subscription_reports) s USING (brand_id)
      ORDER BY b.name, s.marketplace`);
 }
+
+export interface CandidateReport extends SourceReport {
+  selected: boolean;
+}
+
+/**
+ * Every report we hold for a scope and week, with the selected one flagged.
+ * The selection itself lives in sql/select-reports.sql; this read exists to explain it.
+ */
+export async function listCandidates(db: PGlite, brandId: string, marketplace: string, periodStart: string): Promise<CandidateReport[]> {
+  const rows = await queryRows<SnapshotRow & { selected: boolean }>(db, `
+    SELECT r.report_id, r.publisher_report_id, r.status, r.period_start::text AS period_start,
+           r.period_end::text AS period_end, r.generated_at::text AS generated_at,
+           r.extracted_at::text AS extracted_at,
+           r.declared_offer_count::integer AS declared_offer_count,
+           r.declared_active_subscriptions::integer AS declared_subscriptions,
+           (SELECT count(*)::integer FROM raw.subscription_offers o WHERE o.report_id = r.report_id) AS loaded_offers,
+           (SELECT coalesce(sum(o.active_subscriptions), 0)::integer FROM raw.subscription_offers o WHERE o.report_id = r.report_id) AS loaded_subscriptions,
+           (w.source_report_ids->>0) = r.report_id AS selected
+    FROM raw.subscription_reports r
+    LEFT JOIN marts.subscription_weekly w
+      ON w.brand_id = r.brand_id AND w.marketplace = r.marketplace AND w.period_start = r.period_start
+    WHERE r.brand_id = $1 AND r.marketplace = $2 AND r.period_start = $3::date
+    ORDER BY r.revision`, [brandId, marketplace, periodStart]);
+
+  return rows.map(row => ({ ...toSourceReport(row)!, selected: row.selected }));
+}
