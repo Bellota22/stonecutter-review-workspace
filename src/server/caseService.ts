@@ -87,6 +87,7 @@ export interface CaseView {
 
 export type ReportResult =
   | { kind: 'ready'; report: ClientReport }
+  | { kind: 'draft'; report: ClientReport }
   | { kind: 'requires_attention'; changes: string[] }
   | { kind: 'no_decision' }
   | { kind: 'policy_changed'; violations: string[] };
@@ -241,7 +242,29 @@ function sourcesOf(evidence: Evidence): ReportSource[] {
  * the report as part of the case instead of asking the user to press a button to see their outcome.
  */
 export function reportFor(view: CaseView): ReportResult {
-  if (!view.decision) return { kind: 'no_decision' };
+  if (!view.decision) {
+    // The report is never a locked door: without a decision it shows, labelled as a draft, exactly
+    // what saving the suggested outcome would produce.
+    return {
+      kind: 'draft',
+      report: buildClientReport({
+        client: view.scope.brandName,
+        marketplace: view.scope.marketplace,
+        period: { start: PERIOD_START, end: PERIOD_END },
+        decision: {
+          outcome: view.verdict.outcome,
+          budgetChangePct: view.verdict.budgetChangePct,
+          reason: 'No decision recorded yet: this draft follows the policy verdict for the evidence.',
+          decidedAt: '',
+        },
+        evidence: view.evidence,
+        verdict: view.verdict,
+        limitations: view.verdict.violations,
+        sources: sourcesOf(view.evidence),
+        draft: true,
+      }),
+    };
+  }
   if (view.attention) return { kind: 'requires_attention', changes: view.attention.changes };
   if (view.decision.outcome === 'expand_promotion' && view.verdict.outcome !== 'expand_promotion') {
     return { kind: 'policy_changed', violations: view.verdict.violations };

@@ -17,7 +17,9 @@ export async function GET(request: Request) {
   }
 
   const result = await withDatabase((db) => generateReport(db, brandId, marketplace));
-  if (result.kind === 'ready') return Response.json({ kind: 'ready', report: result.report });
+  if (result.kind === 'ready' || result.kind === 'draft') {
+    return Response.json({ kind: result.kind, report: result.report });
+  }
   if (result.kind === 'no_decision') {
     return Response.json(
       { kind: 'no_decision', error: 'No decision has been saved for this case.' },

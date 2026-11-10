@@ -1,87 +1,36 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useActionState, useState } from 'react';
 import type { CaseView } from '../../src/server/caseService.ts';
 import type { Outcome } from '../../src/types.ts';
-import { StepBadge, day } from './primitives.tsx';
+import { day } from './primitives.tsx';
+import { saveDecisionAction } from '../_actions/decision.ts';
+import { initialDecisionState } from '../_actions/decisionState.ts';
 
-interface SavedDecision {
-  version: number;
-  outcome: Outcome;
-  budgetChangePct: number;
-  limitations: string[];
-  createdAt: string;
-  reason: string;
-}
-
-type Feedback =
-  | { kind: 'idle' }
-  | { kind: 'busy' }
-  | { kind: 'violations'; items: string[] }
-  | { kind: 'failed'; items: string[] };
-
-/** Step 1: record what the evidence supports. Always visible, never below the fold. */
+/**
+ * The decision form posts a Server Action: the backend re-derives the evidence, saves or refuses, and
+ * the case page re-renders from the database. There is no client-side copy of the decision to drift.
+ */
 export function DecisionRail({ view }: { view: CaseView }) {
-  const router = useRouter();
   const expandable = view.verdict.outcome === 'expand_promotion';
   const [outcome, setOutcome] = useState<Outcome>(
     view.decision?.outcome ?? (expandable ? 'expand_promotion' : 'hold'),
   );
   const [reason, setReason] = useState('');
-  const [feedback, setFeedback] = useState<Feedback>({ kind: 'idle' });
-  const [saved, setSaved] = useState<SavedDecision | null>(null);
+  const [state, formAction, pending] = useActionState(saveDecisionAction, initialDecisionState);
   const ready = reason.trim().length >= 10;
-  // The server render catches up on refresh; until then the response is what the user just created.
-  const current = saved && (!view.decision || saved.version >= view.decision.version) ? saved : view.decision;
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setFeedback({ kind: 'busy' });
-    try {
-      const response = await fetch('/api/case/decision', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          brandId: view.scope.brandId,
-          marketplace: view.scope.marketplace,
-          outcome,
-          reason,
-        }),
-      });
-      const body = await response.json();
-      if (response.ok) {
-        setSaved({
-          version: body.version,
-          outcome: body.outcome,
-          budgetChangePct: body.budgetChangePct,
-          limitations: body.limitations ?? [],
-          createdAt: body.createdAt ?? new Date().toISOString(),
-          reason: reason.trim(),
-        });
-        setReason('');
-        setFeedback({ kind: 'idle' });
-        router.refresh();
-        return;
-      }
-      setFeedback(
-        response.status === 422
-          ? { kind: 'violations', items: body.details ?? ['The evidence does not support this decision.'] }
-          : { kind: 'failed', items: body.details ?? ['The decision could not be saved.'] },
-      );
-    } catch {
-      setFeedback({ kind: 'failed', items: ['The backend is unreachable.'] });
-    }
-  }
+  const refused = state.status === 'error';
 
   return (
     <aside className="actionrail" aria-label="Review actions">
-      <form className="card actioncard" onSubmit={submit}>
+      <form className="card actioncard" action={formAction}>
+        <input type="hidden" name="brandId" value={view.scope.brandId} />
+        <input type="hidden" name="marketplace" value={view.scope.marketplace} />
+
         <div className="actioncard__head">
-          <StepBadge step={1} done={Boolean(view.decision)} />
           <div>
             <h2 className="card__title">Record the decision</h2>
-            <p className="card__hint">Stored by the backend for this scope and week.</p>
+            <p className="card__hint">Saved by the backend for this scope and week.</p>
           </div>
         </div>
 
@@ -138,6 +87,7 @@ export function DecisionRail({ view }: { view: CaseView }) {
           <span className="field__label">Reason</span>
           <textarea
             id="reason"
+            name="reason"
             rows={3}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
@@ -148,13 +98,18 @@ export function DecisionRail({ view }: { view: CaseView }) {
           <span className="field__hint">{ready ? 'Ready to save.' : 'At least 10 characters.'}</span>
         </label>
 
-        {feedback.kind === 'violations' || feedback.kind === 'failed' ? (
-          <div className={`notice notice--${feedback.kind === 'violations' ? 'block' : 'warn'}`} role="alert">
-            <span className="notice__mark">{feedback.kind === 'violations' ? '✗' : '!'}</span>
+        {refused ? (
+          <div
+            className={`notice notice--${state.error === 'policy_violation' ? 'block' : 'warn'}`}
+            role="alert"
+          >
+            <span className="notice__mark">{state.error === 'policy_violation' ? '✗' : '!'}</span>
             <div>
-              <strong>{feedback.kind === 'violations' ? 'Refused by the backend' : 'Could not save'}</strong>
+              <strong>
+                {state.error === 'policy_violation' ? 'Refused by the backend' : 'Could not save'}
+              </strong>
               <ul>
-                {feedback.items.map((item) => (
+                {(state.details ?? ['The decision could not be saved.']).map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -162,12 +117,8 @@ export function DecisionRail({ view }: { view: CaseView }) {
           </div>
         ) : null}
 
-        <button
-          type="submit"
-          className="button button--primary button--block"
-          disabled={!ready || feedback.kind === 'busy'}
-        >
-          {feedback.kind === 'busy' ? 'Saving…' : current ? 'Save new version' : 'Save decision'}
+        <button type="submit" className="button button--primary button--block" disabled={!ready || pending}>
+          {pending ? 'Saving…' : view.decision ? 'Save new version' : 'Save decision'}
         </button>
 
         {view.decision ? (
@@ -186,10 +137,11 @@ export function DecisionRail({ view }: { view: CaseView }) {
         ) : null}
       </form>
 
-      <a className={`railjump${current ? '' : ' railjump--muted'}`} href="#report">
-        <StepBadge step={2} done={Boolean(current)} />
-        <span>{current ? 'Client report ready below' : 'Report unlocks after the decision'}</span>
-        <span aria-hidden="true">↓</span>
+      <a className="railjump" href="#report">
+        <span className="railjump__icon" aria-hidden="true">
+          ↓
+        </span>
+        <span>Go to the client report</span>
       </a>
     </aside>
   );

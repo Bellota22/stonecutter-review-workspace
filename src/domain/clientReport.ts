@@ -9,6 +9,8 @@ export interface ReportSource {
 }
 
 export interface ClientReport {
+  /** True when no decision is recorded yet: the report shows what it would say if the suggested outcome were saved. */
+  draft: boolean;
   client: string;
   marketplace: string;
   period: { start: string; end: string };
@@ -28,6 +30,7 @@ export interface ReportInput {
   verdict: DecisionVerdict;
   limitations: string[];
   sources: ReportSource[];
+  draft?: boolean;
 }
 
 const day = (value: string | null): string => (value ? value.slice(0, 10) : 'unknown');
@@ -91,6 +94,7 @@ export function nextStep(evidence: Evidence, verdict: DecisionVerdict): string {
 export function buildClientReport(input: ReportInput): ClientReport {
   const { evidence } = input;
   return {
+    draft: input.draft ?? false,
     client: input.client,
     marketplace: input.marketplace,
     period: input.period,

@@ -630,8 +630,7 @@ table.data tr:hover {
 }
 .actioncard__head {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
-  gap: 10px;
+  gap: 2px;
   align-items: start;
 }
 .actioncard__blocked {
@@ -946,6 +945,11 @@ textarea:focus {
 }
 .reportcard__head {
   padding: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 .report {
   border: 1px solid var(--line);
@@ -1294,4 +1298,18 @@ textarea:focus {
 }
 .data--recon th:nth-child(5) {
   width: 16%;
+}
+
+.railjump__icon {
+  font-size: 14px;
+  color: var(--accent);
+}
+.history__figures {
+  display: grid;
+  gap: 1px;
+}
+.history__numbers {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 12px;
 }
