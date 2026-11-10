@@ -1,5 +1,28 @@
 import type { Document } from './knowledge.ts';
 
+/** One selected weekly report plus the publisher control totals used to verify what we ingested. */
+export interface SourceReport {
+  reportId: string;
+  publisherReportId: string;
+  status: 'complete' | 'partial' | string;
+  periodStart: string;
+  periodEnd: string;
+  generatedAt: string;
+  extractedAt: string;
+  declaredOfferCount: number;
+  declaredSubscriptions: number;
+  loadedOffers: number;
+  loadedSubscriptions: number;
+}
+
+/** A named, human-readable evidence check. The decision policy reads these, the interface shows them. */
+export interface EvidenceCheck {
+  code: 'import_fresh' | 'current_complete' | 'previous_complete'
+      | 'current_reconciled' | 'previous_reconciled' | 'baseline_available';
+  ok: boolean;
+  detail: string;
+}
+
 export interface Evidence {
   brandId: string; brandName: string; marketplace: string;
   periodStart: string; expectedPeriodEnd: string; asOf: string;
@@ -11,8 +34,18 @@ export interface Evidence {
   inventoryUnits: number;
   sourceSnapshots: { reportId: string; activeSubscriptions: number }[];
   sourceTotal?: number; reconciliationDelta?: number | null;
+  currentReport: SourceReport | null;
+  previousReport: SourceReport | null;
+  checks?: EvidenceCheck[];
 }
 export interface Quality { status: 'ready' | 'insufficient'; reasons: string[] }
+/** Outcome the policy allows for the evidence. The model proposes; the policy decides. */
+export interface DecisionVerdict {
+  outcome: 'expand_promotion' | 'hold';
+  budgetChangePct: number;
+  violations: string[];
+  summary: string;
+}
 export interface Recommendation {
   action: 'expand_promotion' | 'hold'; budgetChangePct: number;
   narrative: string; citations: string[];
@@ -21,6 +54,6 @@ export interface AnalystContext {
   systemPolicy: string; evidence: Evidence; quality: Quality; documents: Document[];
 }
 export interface Report {
-  evidence: Evidence; quality: Quality; recommendation: Recommendation;
+  evidence: Evidence; quality: Quality; recommendation: Recommendation; verdict: DecisionVerdict;
   trace: { sql: string; parameters: string[]; context: AnalystContext; proposal: Recommendation; validation: string[] };
 }

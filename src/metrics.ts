@@ -1,47 +1,92 @@
 import type { PGlite } from '@electric-sql/pglite';
 import { AS_OF, PERIOD_START, PERIOD_END, PREVIOUS_START, queryRows } from './database.ts';
-import type { Evidence } from './types.ts';
+import type { Evidence, SourceReport } from './types.ts';
 
-export const METRICS_SQL = `
-SELECT b.brand_id, b.name, w.active_subscriptions::text AS current_count,
-       p.active_subscriptions::text AS previous_count,
-       w.source_period_end::text, w.source_complete, w.source_report_ids,
-       w.ingested_at::text, p.source_complete AS previous_complete,
-       p.source_period_end::text AS previous_end
-FROM brands b
-LEFT JOIN marts.subscription_weekly w
-  ON w.brand_id=b.brand_id AND w.marketplace=$2 AND w.period_start=$3::date
-LEFT JOIN marts.subscription_weekly p
-  ON p.brand_id=b.brand_id AND p.marketplace=$2 AND p.period_start=$4::date
-WHERE b.brand_id=$1`;
+/** Evidence for one scope: the selected snapshot per week, its publisher control totals and context. */
+export const SNAPSHOT_SQL = `
+SELECT w.active_subscriptions::integer AS mart_subscriptions,
+       r.report_id, r.publisher_report_id, r.status, r.period_start::text AS period_start,
+       r.period_end::text AS period_end, r.generated_at::text AS generated_at,
+       r.extracted_at::text AS extracted_at,
+       r.declared_offer_count::integer AS declared_offer_count,
+       r.declared_active_subscriptions::integer AS declared_subscriptions,
+       (SELECT count(*)::integer FROM raw.subscription_offers o WHERE o.report_id = r.report_id) AS loaded_offers,
+       (SELECT coalesce(sum(o.active_subscriptions), 0)::integer FROM raw.subscription_offers o WHERE o.report_id = r.report_id) AS loaded_subscriptions
+FROM marts.subscription_weekly w
+JOIN raw.subscription_reports r ON r.report_id = (w.source_report_ids->>0)
+WHERE w.brand_id = $1 AND w.marketplace = $2 AND w.period_start = $3::date`;
 
-interface Row {
-  brand_id: string; name: string; current_count: string | null; previous_count: string | null;
-  source_period_end: string | null; source_complete: boolean | null; source_report_ids: string[] | null;
-  ingested_at: string | null; previous_complete: boolean | null; previous_end: string | null;
+const SALES_SQL = `SELECT COALESCE(SUM(product_revenue + promotions + refunds), 0)::text AS total
+  FROM raw.sales_daily WHERE brand_id = $1 AND marketplace = $2 AND date BETWEEN $3::date AND $4::date`;
+const ADS_SQL = `SELECT COALESCE(SUM(spend), 0)::text AS spend, COALESCE(SUM(attributed_sales), 0)::text AS sales
+  FROM raw.advertising_daily WHERE brand_id = $1 AND marketplace = $2 AND date BETWEEN $3::date AND $4::date`;
+const INVENTORY_SQL = `SELECT COALESCE(SUM(available_units), 0)::text AS units
+  FROM raw.inventory_snapshots WHERE brand_id = $1 AND marketplace = $2
+    AND date = (SELECT MAX(date) FROM raw.inventory_snapshots WHERE brand_id = $1 AND marketplace = $2 AND date <= $3::date)`;
+
+interface SnapshotRow {
+  mart_subscriptions: number; report_id: string; publisher_report_id: string; status: string;
+  period_start: string; period_end: string; generated_at: string; extracted_at: string;
+  declared_offer_count: number; declared_subscriptions: number;
+  loaded_offers: number; loaded_subscriptions: number;
+}
+
+function toSourceReport(row: SnapshotRow | undefined): SourceReport | null {
+  if (!row) return null;
+  return {
+    reportId: row.report_id,
+    publisherReportId: row.publisher_report_id,
+    status: row.status,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    generatedAt: row.generated_at,
+    extractedAt: row.extracted_at,
+    declaredOfferCount: row.declared_offer_count,
+    declaredSubscriptions: row.declared_subscriptions,
+    loadedOffers: row.loaded_offers,
+    loadedSubscriptions: row.loaded_subscriptions,
+  };
 }
 
 export async function getEvidence(db: PGlite, brandId: string, marketplace = 'US'): Promise<Evidence> {
-  const [r] = await queryRows<Row>(db, METRICS_SQL, [brandId, marketplace, PERIOD_START, PREVIOUS_START]);
-  if (!r) throw new Error(`Unknown brand: ${brandId}. Query SELECT * FROM brands to see valid IDs.`);
-  const [sales] = await queryRows<{ total: string }>(db, `SELECT COALESCE(SUM(product_revenue + promotions + refunds),0)::text AS total FROM raw.sales_daily WHERE brand_id=$1 AND marketplace=$2 AND date BETWEEN $3::date AND $4::date`, [brandId, marketplace, PERIOD_START, PERIOD_END]);
-  const [ads] = await queryRows<{ spend: string; sales: string }>(db, `SELECT COALESCE(SUM(spend),0)::text AS spend, COALESCE(SUM(attributed_sales),0)::text AS sales FROM raw.advertising_daily WHERE brand_id=$1 AND marketplace=$2 AND date BETWEEN $3::date AND $4::date`, [brandId, marketplace, PERIOD_START, PERIOD_END]);
-  const [inventory] = await queryRows<{ units: string }>(db, `SELECT COALESCE(SUM(available_units),0)::text AS units FROM raw.inventory_snapshots WHERE brand_id=$1 AND marketplace=$2 AND date=(SELECT MAX(date) FROM raw.inventory_snapshots WHERE brand_id=$1 AND marketplace=$2 AND date <= $3::date)`, [brandId, marketplace, PERIOD_END]);
-  const current = r.current_count === null ? null : Number(r.current_count);
-  const previous = r.previous_count === null ? null : Number(r.previous_count);
-  const sourceSnapshots = await queryRows<{ reportId: string; activeSubscriptions: number }>(db,
-    `SELECT report_id AS "reportId", SUM(active_subscriptions)::integer AS "activeSubscriptions"
-     FROM raw.subscription_offers WHERE report_id = ANY($1::text[]) GROUP BY report_id ORDER BY report_id`,
-    [r.source_report_ids ?? []]);
+  const [brand] = await queryRows<{ name: string }>(db, 'SELECT name FROM brands WHERE brand_id = $1', [brandId]);
+  if (!brand) throw new Error(`Unknown brand: ${brandId}. Query SELECT * FROM brands to see valid IDs.`);
+
+  const [currentRow] = await queryRows<SnapshotRow>(db, SNAPSHOT_SQL, [brandId, marketplace, PERIOD_START]);
+  const [previousRow] = await queryRows<SnapshotRow>(db, SNAPSHOT_SQL, [brandId, marketplace, PREVIOUS_START]);
+  const currentReport = toSourceReport(currentRow);
+  const previousReport = toSourceReport(previousRow);
+
+  const [sales] = await queryRows<{ total: string }>(db, SALES_SQL, [brandId, marketplace, PERIOD_START, PERIOD_END]);
+  const [ads] = await queryRows<{ spend: string; sales: string }>(db, ADS_SQL, [brandId, marketplace, PERIOD_START, PERIOD_END]);
+  const [inventory] = await queryRows<{ units: string }>(db, INVENTORY_SQL, [brandId, marketplace, PERIOD_END]);
+
   return {
-    brandId, brandName: r.name, marketplace, periodStart: PERIOD_START, expectedPeriodEnd: PERIOD_END, asOf: AS_OF,
-    activeSubscriptions: current, previousSubscriptions: previous,
-    growthPct: null, sourceSnapshots,
-    sourcePeriodEnd: r.source_period_end, sourceComplete: r.source_complete ?? false,
-    sourceReports: r.source_report_ids ?? [], ingestedAt: r.ingested_at,
-    previousSourceComplete: r.previous_complete ?? false, previousSourcePeriodEnd: r.previous_end,
-    netSales: Number(sales.total), adSpend: Number(ads.spend), attributedAdSales: Number(ads.sales),
+    brandId, brandName: brand.name, marketplace,
+    periodStart: PERIOD_START, expectedPeriodEnd: PERIOD_END, asOf: AS_OF,
+    activeSubscriptions: currentRow ? currentRow.mart_subscriptions : null,
+    previousSubscriptions: previousRow ? previousRow.mart_subscriptions : null,
+    growthPct: null,
+    sourceSnapshots: currentRow ? [{ reportId: currentRow.report_id, activeSubscriptions: currentRow.loaded_subscriptions }] : [],
+    sourcePeriodEnd: currentRow?.period_end ?? null,
+    sourceComplete: currentRow?.status === 'complete',
+    sourceReports: currentRow ? [currentRow.report_id] : [],
+    ingestedAt: currentRow?.extracted_at ?? null,
+    previousSourceComplete: previousRow?.status === 'complete',
+    previousSourcePeriodEnd: previousRow?.period_end ?? null,
+    netSales: Number(sales.total),
+    adSpend: Number(ads.spend),
+    attributedAdSales: Number(ads.sales),
     roas: Number(ads.spend) > 0 ? Math.round(Number(ads.sales) / Number(ads.spend) * 100) / 100 : null,
     inventoryUnits: Number(inventory.units),
+    currentReport, previousReport,
   };
+}
+
+/** Every scope in the fixture, for the review workflow's scope picker. */
+export async function listScopes(db: PGlite): Promise<{ brandId: string; brandName: string; marketplace: string }[]> {
+  return queryRows<{ brandId: string; brandName: string; marketplace: string }>(db,
+    `SELECT b.brand_id AS "brandId", b.name AS "brandName", s.marketplace
+     FROM brands b JOIN (SELECT DISTINCT brand_id, marketplace FROM raw.subscription_reports) s USING (brand_id)
+     ORDER BY b.name, s.marketplace`);
 }

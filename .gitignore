@@ -5,3 +5,10 @@ node_modules/
 .venv/
 __pycache__/
 .pytest_cache/
+
+# Windows download metadata from the assessment bundle (never part of the project)
+*:Zone.Identifier
+
+# Next.js build output
+.next/
+next-env.d.ts
