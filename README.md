@@ -89,6 +89,35 @@ Run commands from this project directory. If your Node version differs, check `n
 For a setup blocker, contact the person who sent the assessment; report the error and time
 spent rather than spending the exercise troubleshooting your environment.
 
+## Run with Docker
+
+Docker Desktop, or any Docker Engine with Compose v2, replaces the Node, npm and Python setup
+above. This is the shortest path to a running workspace.
+
+```sh
+docker compose up --build
+```
+
+Then open **<http://localhost:3000>**. The workspace runs on port 3000, and every scope has its own
+case, for example <http://localhost:3000/case/cedar-coast/US>.
+
+Review state lives in the `review-runtime` volume:
+
+- `docker compose restart` reopens the same saved decisions;
+- `docker compose down` keeps the volume and its decisions;
+- `docker compose down -v` deletes it and starts again from the bundled snapshot.
+
+Without Compose:
+
+```sh
+docker build -t stonecutter-review-workspace .
+docker run --rm -p 3000:3000 -v stonecutter-runtime:/app/.runtime stonecutter-review-workspace
+```
+
+The image runs the Next.js server plus the stdlib-only Python reconciliation (Python 3.11 comes from
+the base image), so `npm ci` and `npm run setup` are not needed on the host. The container serves the
+workflow; run `npm test` on the host if you also want the test suites.
+
 ## Investigating
 
 ```sh

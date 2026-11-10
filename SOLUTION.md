@@ -10,6 +10,15 @@ the bundled data, not only the reported one.
 
 ## Run, use, restart, reopen, report
 
+Docker is the shortest path and needs no host tooling beyond Docker Compose v2:
+
+```sh
+docker compose up --build      # http://localhost:3000
+```
+
+Review state is kept in the `review-runtime` volume, so `docker compose restart` reopens the saved
+decisions and `docker compose down -v` starts clean. Without Docker:
+
 ```sh
 npm ci                # installs Node dependencies (next, react, pglite, tsx, typescript)
 npm run setup         # creates .venv and installs pytest (Python 3.11+, stdlib-only runtime)
@@ -21,8 +30,10 @@ npm run dev           # http://localhost:3000
   report held for that week, the six evidence checks, the decision form and the client report.
 - Save a decision: choose **Hold** or **Expand 10%**, write the reason (10 characters minimum) and submit.
   The backend re-derives the evidence and refuses an expansion it cannot support.
-- Stop the server (`Ctrl-C`) and start it again with `npm run dev`. The scope keeps its saved decision,
-  its version number and the audit events; `npm run reset` deletes only the local working copy.
+- Stop the server (`Ctrl-C`, or `docker compose stop`) and start it again (`npm run dev`, or
+  `docker compose start`). The scope keeps its saved decision, its version number and the audit
+  events; `npm run reset` deletes only the local working copy, and in Docker
+  `docker compose down -v` does the same.
 - Generate the client report with the button in the last card, or
   `curl 'http://localhost:3000/api/case/report?brandId=lumen-home&marketplace=CA'`.
 

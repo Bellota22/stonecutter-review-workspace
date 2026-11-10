@@ -1,0 +1,15 @@
+# Review workspace: http://localhost:3000
+#
+# The review state lives in the `review-runtime` volume, so `docker compose restart`
+# (or `down` without `-v`) reopens the same saved decisions.
+services:
+  workspace:
+    build: .
+    image: stonecutter-review-workspace
+    ports:
+      - "3000:3000"
+    volumes:
+      - review-runtime:/app/.runtime
+
+volumes:
+  review-runtime:

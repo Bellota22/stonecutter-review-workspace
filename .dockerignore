@@ -1,0 +1,14 @@
+# Build only what the image needs. The fixture and the exports stay, everything generated goes.
+node_modules
+.next
+.runtime
+.venv
+__pycache__
+.pytest_cache
+*.tsbuildinfo
+next-env.d.ts
+.git
+.github
+*.log
+*:Zone.Identifier
+SOLUTION.md
