@@ -1,4 +1,7 @@
 import type { Document } from './knowledge.ts';
+import type { CaseStatus, Outcome } from './domain/vocabulary.ts';
+
+export type { CaseStatus, Outcome };
 
 /** One selected weekly report plus the publisher control totals used to verify what we ingested. */
 export interface SourceReport {
@@ -41,13 +44,13 @@ export interface Evidence {
 export interface Quality { status: 'ready' | 'insufficient'; reasons: string[] }
 /** Outcome the policy allows for the evidence. The model proposes; the policy decides. */
 export interface DecisionVerdict {
-  outcome: 'expand_promotion' | 'hold';
+  outcome: Outcome;
   budgetChangePct: number;
   violations: string[];
   summary: string;
 }
 export interface Recommendation {
-  action: 'expand_promotion' | 'hold'; budgetChangePct: number;
+  action: Outcome; budgetChangePct: number;
   narrative: string; citations: string[];
 }
 export interface AnalystContext {
@@ -56,4 +59,13 @@ export interface AnalystContext {
 export interface Report {
   evidence: Evidence; quality: Quality; recommendation: Recommendation; verdict: DecisionVerdict;
   trace: { sql: string; parameters: string[]; context: AnalystContext; proposal: Recommendation; validation: string[] };
+}
+
+/** The calculation and checks stored with a decision, so the report can be explained later. */
+export interface DecisionCalculation {
+  activeSubscriptions: number | null;
+  previousSubscriptions: number | null;
+  growthPct: number | null;
+  minimumGrowthPct: number;
+  checks: EvidenceCheck[];
 }

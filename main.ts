@@ -25,8 +25,9 @@ async function main(): Promise<void> {
     const value = (key: string, fallback: string): string => {
       const index = args.indexOf(key);
       if (index < 0) return fallback;
-      if (!args[index + 1] || args[index + 1].startsWith('--')) throw new Error(`Missing value for ${key}`);
-      return args[index + 1];
+      const candidate = args[index + 1];
+      if (!candidate || candidate.startsWith('--')) throw new Error(`Missing value for ${key}`);
+      return candidate;
     };
     await rebuildMetrics(db);
     const result = await analyse(db, value('--brand', 'cedar-coast'), value('--marketplace', 'US'));

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import type { CaseView, ClientReport } from '../../src/server/caseService.ts';
+import type { CaseView } from '../../src/server/caseService.ts';
+import type { ClientReport } from '../../src/domain/clientReport.ts';
 import { day } from './primitives.tsx';
 
 type ReportState =

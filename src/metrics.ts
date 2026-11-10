@@ -25,14 +25,25 @@ const INVENTORY_SQL = `SELECT COALESCE(SUM(available_units), 0)::text AS units
     AND date = (SELECT MAX(date) FROM raw.inventory_snapshots WHERE brand_id = $1 AND marketplace = $2 AND date <= $3::date)`;
 
 interface SnapshotRow {
-  mart_subscriptions: number; report_id: string; publisher_report_id: string; status: string;
-  period_start: string; period_end: string; generated_at: string; extracted_at: string;
-  declared_offer_count: number; declared_subscriptions: number;
-  loaded_offers: number; loaded_subscriptions: number;
+  mart_subscriptions: number;
+  report_id: string;
+  publisher_report_id: string;
+  status: string;
+  period_start: string;
+  period_end: string;
+  generated_at: string;
+  extracted_at: string;
+  declared_offer_count: number;
+  declared_subscriptions: number;
+  loaded_offers: number;
+  loaded_subscriptions: number;
 }
 
-function toSourceReport(row: SnapshotRow | undefined): SourceReport | null {
-  if (!row) return null;
+export interface CandidateReport extends SourceReport {
+  selected: boolean;
+}
+
+function toSourceReport(row: SnapshotRow): SourceReport {
   return {
     reportId: row.report_id,
     publisherReportId: row.publisher_report_id,
@@ -48,58 +59,75 @@ function toSourceReport(row: SnapshotRow | undefined): SourceReport | null {
   };
 }
 
+/** The report the mart counted for one week, with the publisher totals used to verify it. */
+async function loadSnapshot(db: PGlite, brandId: string, marketplace: string, periodStart: string): Promise<SnapshotRow | null> {
+  const [row] = await queryRows<SnapshotRow>(db, SNAPSHOT_SQL, [brandId, marketplace, periodStart]);
+  return row ?? null;
+}
+
+interface ContextTotals {
+  netSales: number;
+  adSpend: number;
+  attributedAdSales: number;
+  inventoryUnits: number;
+}
+
+async function loadContext(db: PGlite, brandId: string, marketplace: string): Promise<ContextTotals> {
+  const [sales] = await queryRows<{ total: string }>(db, SALES_SQL, [brandId, marketplace, PERIOD_START, PERIOD_END]);
+  const [ads] = await queryRows<{ spend: string; sales: string }>(db, ADS_SQL, [brandId, marketplace, PERIOD_START, PERIOD_END]);
+  const [inventory] = await queryRows<{ units: string }>(db, INVENTORY_SQL, [brandId, marketplace, PERIOD_END]);
+  return {
+    netSales: Number(sales?.total ?? 0),
+    adSpend: Number(ads?.spend ?? 0),
+    attributedAdSales: Number(ads?.sales ?? 0),
+    inventoryUnits: Number(inventory?.units ?? 0),
+  };
+}
+
 export async function getEvidence(db: PGlite, brandId: string, marketplace = 'US'): Promise<Evidence> {
   const [brand] = await queryRows<{ name: string }>(db, 'SELECT name FROM brands WHERE brand_id = $1', [brandId]);
   if (!brand) throw new Error(`Unknown brand: ${brandId}. Query SELECT * FROM brands to see valid IDs.`);
 
-  const [currentRow] = await queryRows<SnapshotRow>(db, SNAPSHOT_SQL, [brandId, marketplace, PERIOD_START]);
-  const [previousRow] = await queryRows<SnapshotRow>(db, SNAPSHOT_SQL, [brandId, marketplace, PREVIOUS_START]);
-  const currentReport = toSourceReport(currentRow);
-  const previousReport = toSourceReport(previousRow);
-
-  const [sales] = await queryRows<{ total: string }>(db, SALES_SQL, [brandId, marketplace, PERIOD_START, PERIOD_END]);
-  const [ads] = await queryRows<{ spend: string; sales: string }>(db, ADS_SQL, [brandId, marketplace, PERIOD_START, PERIOD_END]);
-  const [inventory] = await queryRows<{ units: string }>(db, INVENTORY_SQL, [brandId, marketplace, PERIOD_END]);
+  const current = await loadSnapshot(db, brandId, marketplace, PERIOD_START);
+  const previous = await loadSnapshot(db, brandId, marketplace, PREVIOUS_START);
+  const context = await loadContext(db, brandId, marketplace);
+  const currentReport = current ? toSourceReport(current) : null;
+  const previousReport = previous ? toSourceReport(previous) : null;
 
   return {
-    brandId, brandName: brand.name, marketplace,
-    periodStart: PERIOD_START, expectedPeriodEnd: PERIOD_END, asOf: AS_OF,
-    activeSubscriptions: currentRow ? currentRow.mart_subscriptions : null,
-    previousSubscriptions: previousRow ? previousRow.mart_subscriptions : null,
+    brandId,
+    brandName: brand.name,
+    marketplace,
+    periodStart: PERIOD_START,
+    expectedPeriodEnd: PERIOD_END,
+    asOf: AS_OF,
+    activeSubscriptions: current?.mart_subscriptions ?? null,
+    previousSubscriptions: previous?.mart_subscriptions ?? null,
     growthPct: null,
-    sourceSnapshots: currentRow ? [{ reportId: currentRow.report_id, activeSubscriptions: currentRow.loaded_subscriptions }] : [],
-    sourcePeriodEnd: currentRow?.period_end ?? null,
-    sourceComplete: currentRow?.status === 'complete',
-    sourceReports: currentRow ? [currentRow.report_id] : [],
-    ingestedAt: currentRow?.extracted_at ?? null,
-    previousSourceComplete: previousRow?.status === 'complete',
-    previousSourcePeriodEnd: previousRow?.period_end ?? null,
-    netSales: Number(sales.total),
-    adSpend: Number(ads.spend),
-    attributedAdSales: Number(ads.sales),
-    roas: Number(ads.spend) > 0 ? Math.round(Number(ads.sales) / Number(ads.spend) * 100) / 100 : null,
-    inventoryUnits: Number(inventory.units),
-    currentReport, previousReport,
+    sourceSnapshots: current ? [{ reportId: current.report_id, activeSubscriptions: current.loaded_subscriptions }] : [],
+    sourcePeriodEnd: current?.period_end ?? null,
+    sourceComplete: current?.status === 'complete',
+    sourceReports: current ? [current.report_id] : [],
+    ingestedAt: current?.extracted_at ?? null,
+    previousSourceComplete: previous?.status === 'complete',
+    previousSourcePeriodEnd: previous?.period_end ?? null,
+    netSales: context.netSales,
+    adSpend: context.adSpend,
+    attributedAdSales: context.attributedAdSales,
+    roas: context.adSpend > 0 ? Math.round(context.attributedAdSales / context.adSpend * 100) / 100 : null,
+    inventoryUnits: context.inventoryUnits,
+    currentReport,
+    previousReport,
   };
-}
-
-/** Every scope in the fixture, for the review workflow's scope picker. */
-export async function listScopes(db: PGlite): Promise<{ brandId: string; brandName: string; marketplace: string }[]> {
-  return queryRows<{ brandId: string; brandName: string; marketplace: string }>(db,
-    `SELECT b.brand_id AS "brandId", b.name AS "brandName", s.marketplace
-     FROM brands b JOIN (SELECT DISTINCT brand_id, marketplace FROM raw.subscription_reports) s USING (brand_id)
-     ORDER BY b.name, s.marketplace`);
-}
-
-export interface CandidateReport extends SourceReport {
-  selected: boolean;
 }
 
 /**
  * Every report we hold for a scope and week, with the selected one flagged.
  * The selection itself lives in sql/select-reports.sql; this read exists to explain it.
  */
-export async function listCandidates(db: PGlite, brandId: string, marketplace: string, periodStart: string): Promise<CandidateReport[]> {
+export async function listCandidates(
+  db: PGlite, brandId: string, marketplace: string, periodStart: string,
+): Promise<CandidateReport[]> {
   const rows = await queryRows<SnapshotRow & { selected: boolean }>(db, `
     SELECT r.report_id, r.publisher_report_id, r.status, r.period_start::text AS period_start,
            r.period_end::text AS period_end, r.generated_at::text AS generated_at,
@@ -115,5 +143,13 @@ export async function listCandidates(db: PGlite, brandId: string, marketplace: s
     WHERE r.brand_id = $1 AND r.marketplace = $2 AND r.period_start = $3::date
     ORDER BY r.revision`, [brandId, marketplace, periodStart]);
 
-  return rows.map(row => ({ ...toSourceReport(row)!, selected: row.selected }));
+  return rows.map(row => ({ ...toSourceReport(row), selected: row.selected }));
+}
+
+/** Every scope in the fixture, for the review workflow's scope picker. */
+export async function listScopes(db: PGlite): Promise<{ brandId: string; brandName: string; marketplace: string }[]> {
+  return queryRows<{ brandId: string; brandName: string; marketplace: string }>(db,
+    `SELECT b.brand_id AS "brandId", b.name AS "brandName", s.marketplace
+     FROM brands b JOIN (SELECT DISTINCT brand_id, marketplace FROM raw.subscription_reports) s USING (brand_id)
+     ORDER BY b.name, s.marketplace`);
 }

@@ -6,7 +6,7 @@ import { day, number } from './primitives.tsx';
  * pipeline counts now, and the number it counted before the correction.
  */
 export function Reconciliation({ view }: { view: CaseView }) {
-  const before = view.counterfactual;
+  const before = view.previousSelection;
 
   return (
     <section className="card" aria-labelledby="recon-heading">

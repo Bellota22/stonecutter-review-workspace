@@ -42,14 +42,26 @@ export async function loadExports(): Promise<{
   const reportsCsv = await readFile(path.join(ROOT, 'data/exports/subscription_reports.csv'), 'utf8');
   const offersCsv = await readFile(path.join(ROOT, 'data/exports/subscription_offers.csv'), 'utf8');
 
-  const reports: ExportReport[] = parseCsv(reportsCsv).map(([id, brandId, marketplace, periodStart, periodEnd, status, , supersededBy, offerCount, declared]) => ({
-    publisherReportId: id, brandId, marketplace, periodStart, periodEnd, status,
-    supersededBy, offerCount: Number(offerCount), declaredSubscriptions: Number(declared),
-  }));
+  const reports: ExportReport[] = parseCsv(reportsCsv).map(cells => {
+    const [publisherReportId, brandId, marketplace, periodStart, periodEnd, status] = cells;
+    const supersededBy = cells[7] ?? '';
+    return {
+      publisherReportId: publisherReportId ?? '',
+      brandId: brandId ?? '',
+      marketplace: marketplace ?? '',
+      periodStart: periodStart ?? '',
+      periodEnd: periodEnd ?? '',
+      status: status ?? '',
+      supersededBy,
+      offerCount: Number(cells[8] ?? 0),
+      declaredSubscriptions: Number(cells[9] ?? 0),
+    };
+  });
 
   const offerTotals = new Map<string, number>();
-  for (const [id, , , count] of parseCsv(offersCsv)) {
-    offerTotals.set(id, (offerTotals.get(id) ?? 0) + Number(count));
+  for (const cells of parseCsv(offersCsv)) {
+    const id = cells[0] ?? '';
+    offerTotals.set(id, (offerTotals.get(id) ?? 0) + Number(cells[3] ?? 0));
   }
 
   const currentByScopeWeek = new Map<string, ExportReport>();

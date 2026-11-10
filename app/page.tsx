@@ -7,7 +7,7 @@ import { day } from './components/primitives.tsx';
 
 export const dynamic = 'force-dynamic';
 
-const STEPS = [
+const STEPS: readonly (readonly [string, string])[] = [
   ['Investigate', 'See which report the pipeline counted, what the publisher declared, and why they disagree.'],
   ['Validate the correction', 'Check the selected report against the publisher control totals before trusting a figure.'],
   ['Record and report', 'Save the decision the evidence supports, then generate the client report from it.'],

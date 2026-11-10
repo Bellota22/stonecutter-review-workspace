@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { DecisionVerdict, Evidence, Quality } from '../types.ts';
+import type { DecisionVerdict, Evidence, Outcome, Quality } from '../types.ts';
 
 /**
  * Authorized application behavior. The model provider proposes; this policy decides.
@@ -9,6 +9,7 @@ export const POLICY = {
   minimumGrowthPct: 10,
   budgetChangePct: 10,
   freshnessHours: 48,
+  minimumReasonCharacters: 10,
 } as const;
 
 /**
@@ -23,15 +24,17 @@ export function evaluateDecision(evidence: Evidence, quality: Quality): Decision
   if (growth === null) {
     violations.push('Weekly growth is not comparable for this scope, so no expansion can be supported.');
   } else if (growth < POLICY.minimumGrowthPct) {
-    violations.push(`Complete comparable growth of ${growth}% is below the ${POLICY.minimumGrowthPct}% required to expand.`);
+    violations.push(
+      `Complete comparable growth of ${growth}% is below the ${POLICY.minimumGrowthPct}% required to expand.`,
+    );
   }
 
-  const expand = violations.length === 0;
+  const outcome: Outcome = violations.length === 0 ? 'expand_promotion' : 'hold';
   return {
-    outcome: expand ? 'expand_promotion' : 'hold',
-    budgetChangePct: expand ? POLICY.budgetChangePct : 0,
+    outcome,
+    budgetChangePct: outcome === 'expand_promotion' ? POLICY.budgetChangePct : 0,
     violations,
-    summary: expand
+    summary: outcome === 'expand_promotion'
       ? `Complete, comparable growth of ${growth}% supports a ${POLICY.budgetChangePct}% promotion expansion suggestion.`
       : 'Hold the promotion until complete, verified and comparable weekly snapshots support a growth claim.',
   };
@@ -39,15 +42,27 @@ export function evaluateDecision(evidence: Evidence, quality: Quality): Decision
 
 /** Material identity of the evidence a decision was taken on; a change here invalidates that decision. */
 export function evidenceFingerprint(evidence: Evidence): string {
-  const report = (value: Evidence['currentReport']) => value && {
-    reportId: value.reportId, publisherReportId: value.publisherReportId, status: value.status,
-    periodEnd: value.periodEnd, declaredOffers: value.declaredOfferCount, loadedOffers: value.loadedOffers,
-    declaredSubscriptions: value.declaredSubscriptions, loadedSubscriptions: value.loadedSubscriptions,
-  };
   const material = {
-    brandId: evidence.brandId, marketplace: evidence.marketplace,
-    periodStart: evidence.periodStart, expectedPeriodEnd: evidence.expectedPeriodEnd,
-    current: report(evidence.currentReport), previous: report(evidence.previousReport),
+    brandId: evidence.brandId,
+    marketplace: evidence.marketplace,
+    periodStart: evidence.periodStart,
+    expectedPeriodEnd: evidence.expectedPeriodEnd,
+    current: sourceIdentity(evidence.currentReport),
+    previous: sourceIdentity(evidence.previousReport),
   };
   return createHash('sha256').update(JSON.stringify(material)).digest('hex');
+}
+
+function sourceIdentity(report: Evidence['currentReport']) {
+  if (!report) return null;
+  return {
+    reportId: report.reportId,
+    publisherReportId: report.publisherReportId,
+    status: report.status,
+    periodEnd: report.periodEnd,
+    declaredOffers: report.declaredOfferCount,
+    loadedOffers: report.loadedOffers,
+    declaredSubscriptions: report.declaredSubscriptions,
+    loadedSubscriptions: report.loadedSubscriptions,
+  };
 }

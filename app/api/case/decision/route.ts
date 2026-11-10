@@ -1,27 +1,57 @@
 import { withDatabase } from '../../../../src/server/db.ts';
-import { PolicyViolation, ValidationError, saveDecision } from '../../../../src/server/caseService.ts';
+import { CaseError, saveDecision } from '../../../../src/server/caseService.ts';
+import { OUTCOMES, type Outcome } from '../../../../src/domain/vocabulary.ts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const OUTCOMES = ['expand_promotion', 'hold'] as const;
-type Outcome = typeof OUTCOMES[number];
+interface DecisionInput {
+  brandId: string;
+  marketplace: string;
+  outcome: Outcome;
+  reason: string;
+}
 
-function parse(body: unknown): { brandId: string; marketplace: string; outcome: Outcome; reason: string } | { problems: string[] } {
-  if (typeof body !== 'object' || body === null) return { problems: ['A JSON object body is required.'] };
-  const record = body as Record<string, unknown>;
-  const problems: string[] = [];
-  if (typeof record.brandId !== 'string' || !record.brandId) problems.push('brandId is required.');
-  if (typeof record.marketplace !== 'string' || !record.marketplace) problems.push('marketplace is required.');
-  if (typeof record.outcome !== 'string' || !OUTCOMES.includes(record.outcome as Outcome)) {
-    problems.push(`outcome must be one of: ${OUTCOMES.join(', ')}.`);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isOutcome = (value: unknown): value is Outcome =>
+  typeof value === 'string' && (OUTCOMES as readonly string[]).includes(value);
+
+function readText(source: Record<string, unknown>, key: string, problems: string[]): string {
+  const value = source[key];
+  if (typeof value !== 'string' || value.trim() === '') {
+    problems.push(`${key} is required.`);
+    return '';
   }
-  if (typeof record.reason !== 'string') problems.push('reason is required.');
-  if (problems.length) return { problems };
-  return {
-    brandId: record.brandId as string, marketplace: record.marketplace as string,
-    outcome: record.outcome as Outcome, reason: record.reason as string,
+  return value;
+}
+
+function readOutcome(source: Record<string, unknown>, problems: string[]): Outcome {
+  const value = source.outcome;
+  if (isOutcome(value)) return value;
+  problems.push(`outcome must be one of: ${OUTCOMES.join(', ')}.`);
+  return 'hold';
+}
+
+function parseDecisionInput(body: unknown): DecisionInput | string[] {
+  if (!isRecord(body)) return ['A JSON object body is required.'];
+  const problems: string[] = [];
+  const input: DecisionInput = {
+    brandId: readText(body, 'brandId', problems),
+    marketplace: readText(body, 'marketplace', problems),
+    outcome: readOutcome(body, problems),
+    reason: body.reason === undefined ? '' : readText(body, 'reason', problems),
   };
+  return problems.length > 0 ? problems : input;
+}
+
+function statusFor(code: CaseError['code']): number {
+  switch (code) {
+    case 'policy_violation': return 422;
+    case 'invalid_request': return 400;
+    case 'no_decision': return 404;
+  }
 }
 
 /**
@@ -30,28 +60,34 @@ function parse(body: unknown): { brandId: string; marketplace: string; outcome: 
  */
 export async function POST(request: Request) {
   let body: unknown;
-  try { body = await request.json(); }
-  catch { return Response.json({ error: 'invalid_request', problems: ['A JSON body is required.'] }, { status: 400 }); }
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'invalid_request', details: ['A JSON body is required.'] }, { status: 400 });
+  }
 
-  const input = parse(body);
-  if ('problems' in input) {
-    return Response.json({ error: 'invalid_request', problems: input.problems }, { status: 400 });
+  const parsed = parseDecisionInput(body);
+  if (Array.isArray(parsed)) {
+    return Response.json({ error: 'invalid_request', details: parsed }, { status: 400 });
   }
 
   try {
-    const { decision } = await withDatabase(db =>
-      saveDecision(db, input.brandId, input.marketplace, { outcome: input.outcome, reason: input.reason }));
+    const decision = await withDatabase(db => saveDecision(db, parsed.brandId, parsed.marketplace, {
+      outcome: parsed.outcome,
+      reason: parsed.reason,
+    }));
     return Response.json({
-      decisionId: decision.decisionId, version: decision.version, outcome: decision.outcome,
-      budgetChangePct: decision.budgetChangePct, limitations: decision.limitations,
-      evidenceFingerprint: decision.evidenceFingerprint,
+      decisionId: decision.decision.decisionId,
+      version: decision.decision.version,
+      outcome: decision.decision.outcome,
+      budgetChangePct: decision.decision.budgetChangePct,
+      limitations: decision.decision.limitations,
+      evidenceFingerprint: decision.decision.evidenceFingerprint,
+      scope: { brandId: decision.view.scope.brandId, marketplace: decision.view.scope.marketplace },
     }, { status: 201 });
   } catch (error) {
-    if (error instanceof PolicyViolation) {
-      return Response.json({ error: 'policy_violation', violations: error.violations }, { status: 422 });
-    }
-    if (error instanceof ValidationError) {
-      return Response.json({ error: 'invalid_request', problems: error.problems }, { status: 400 });
+    if (error instanceof CaseError) {
+      return Response.json({ error: error.code, details: error.details }, { status: statusFor(error.code) });
     }
     throw error;
   }
