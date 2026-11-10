@@ -1,19 +1,11 @@
-import Link from 'next/link';
 import { PERIOD_END, PERIOD_START } from '../src/database.ts';
 import { listScopes } from '../src/metrics.ts';
 import { withDatabase } from '../src/server/db.ts';
 import { listCaseStates } from '../src/server/reviewStore.ts';
+import { ScopeGrid } from './components/ScopeGrid.tsx';
 import { day } from './components/primitives.tsx';
 
 export const dynamic = 'force-dynamic';
-
-function statusOf(state: { status: string; outcome: string | null } | undefined) {
-  if (!state) return { label: 'Not reviewed', tone: '' };
-  if (state.status === 'needs_attention') return { label: 'Requires attention', tone: 'dot--block' };
-  return state.outcome === 'expand_promotion'
-    ? { label: 'Decision saved · expand', tone: 'dot--ok' }
-    : { label: 'Decision saved · hold', tone: 'dot--warn' };
-}
 
 export default async function Home() {
   const scopes = await withDatabase((db) => listScopes(db));
@@ -34,32 +26,7 @@ export default async function Home() {
           </p>
         </header>
 
-        <section className="scopegrid" aria-label="Scopes">
-          {scopes.map((scope) => {
-            const state = statusOf(
-              states.find((item) => item.brandId === scope.brandId && item.marketplace === scope.marketplace),
-            );
-            return (
-              <Link
-                key={`${scope.brandId}-${scope.marketplace}`}
-                href={`/case/${scope.brandId}/${scope.marketplace}`}
-                className="card card--link scopecard"
-              >
-                <div className="scopecard__head">
-                  <span className="scopecard__brand">{scope.brandName}</span>
-                  <span className="chip chip--neutral">{scope.marketplace}</span>
-                </div>
-                <span className="scopecard__status">
-                  <span className={`dot ${state.tone}`} />
-                  {state.label}
-                </span>
-                <span className="scopecard__cta">
-                  Open review <span aria-hidden="true">→</span>
-                </span>
-              </Link>
-            );
-          })}
-        </section>
+        <ScopeGrid scopes={scopes} states={states} />
       </div>
     </main>
   );

@@ -4,6 +4,7 @@ import { withDatabase } from '../../../../src/server/db.ts';
 import { openCase, reportFor } from '../../../../src/server/caseService.ts';
 import { listCaseStates } from '../../../../src/server/reviewStore.ts';
 import { DecisionRail } from '../../../components/DecisionRail.tsx';
+import { HistoryCard } from '../../../components/HistoryCard.tsx';
 import { MetricStrip } from '../../../components/MetricStrip.tsx';
 import { ReportCard } from '../../../components/ReportCard.tsx';
 import { ScopeNav } from '../../../components/ScopeNav.tsx';
@@ -70,6 +71,7 @@ export default async function CasePage({
           <div className="stack">
             <WhyCard view={view} />
             <ChecksCard view={view} />
+            <HistoryCard view={view} />
           </div>
           <DecisionRail view={view} />
         </div>

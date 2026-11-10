@@ -10,6 +10,7 @@ import {
   type PreviousSelection,
 } from '../domain/candidates.ts';
 import { compareEvidence, material } from '../domain/evidence.ts';
+import { publisherExports } from './publisherExports.ts';
 import { buildClientReport, type ClientReport, type ReportSource } from '../domain/clientReport.ts';
 import type { CaseStatus, DecisionVerdict, Evidence, Quality } from '../types.ts';
 import {
@@ -17,6 +18,7 @@ import {
   appendEvent,
   ensureCase,
   latestDecision,
+  listDecisions,
   setCaseStatus,
   type CaseRow,
   type DecisionRow,
@@ -79,6 +81,7 @@ export interface CaseView {
   candidates: CandidateView[];
   previousSelection: PreviousSelection | null;
   decision: DecisionRow | null;
+  history: DecisionRow[];
   attention: { changes: string[] } | null;
 }
 
@@ -99,8 +102,19 @@ export async function openCase(db: PGlite, brandId: string, marketplace: string)
 
   const scope: Scope = { brandId, marketplace, periodStart: PERIOD_START };
   let row = await ensureCase(db, scope);
-  const candidates = explainCandidates(await listCandidates(db, brandId, marketplace, PERIOD_START));
+  const exports = await publisherExports();
+  const exportTotals = new Map(
+    [...exports.byPublisherReportId.values()].map((entry) => [
+      entry.publisherReportId,
+      entry.totalSubscriptions,
+    ]),
+  );
+  const candidates = explainCandidates(
+    await listCandidates(db, brandId, marketplace, PERIOD_START),
+    exportTotals,
+  );
   const decision = await latestDecision(db, row.caseId);
+  const history = await listDecisions(db, row.caseId);
   const counted = previousSelection(candidates);
 
   const attention = await reconcileAttention(db, row, decision, evidence, fingerprint);
@@ -124,6 +138,7 @@ export async function openCase(db: PGlite, brandId: string, marketplace: string)
     fingerprint,
     candidates,
     decision,
+    history,
     attention: attention.changes ? { changes: attention.changes } : null,
     previousSelection: counted.total === evidence.activeSubscriptions ? null : counted,
   };

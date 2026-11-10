@@ -74,6 +74,9 @@ export function ReportCard({ result }: { result: ReportResult }) {
             </span>
           </header>
 
+          <p className="provenance" style={{ padding: '0 16px', marginTop: 10 }}>
+            Figures below are copied from the selected publisher reports, not from this screen.
+          </p>
           <div className="report__figures">
             {result.report.supportedResult.map((row) => (
               <div className="report__figure" key={row.label}>
@@ -86,11 +89,15 @@ export function ReportCard({ result }: { result: ReportResult }) {
 
           <div className="report__body">
             <div className="report__section">
-              <span className="report__label">Why</span>
+              <span className="report__label">
+                Why <span className="provenance">· the reason you recorded</span>
+              </span>
               <p className="report__text">{result.report.decision.reason}</p>
             </div>
             <div className="report__section">
-              <span className="report__label">Limitations</span>
+              <span className="report__label">
+                Limitations <span className="provenance">· from the checks that failed</span>
+              </span>
               {result.report.limitations.length === 0 ? (
                 <p className="report__text">
                   None material: both weeks are complete and reconcile to the publisher.
@@ -104,11 +111,15 @@ export function ReportCard({ result }: { result: ReportResult }) {
               )}
             </div>
             <div className="report__section">
-              <span className="report__label">Next step</span>
+              <span className="report__label">
+                Next step <span className="provenance">· from the policy</span>
+              </span>
               <p className="report__next">{result.report.nextStep}</p>
             </div>
             <div className="report__section">
-              <span className="report__label">Sources</span>
+              <span className="report__label">
+                Sources <span className="provenance">· publisher report ids</span>
+              </span>
               <ul className="report__list report__list--mono">
                 {result.report.sources.map((source) => (
                   <li key={source.reportId}>

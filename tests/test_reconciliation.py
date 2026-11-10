@@ -13,6 +13,10 @@ def report(status, period_end, declared, loaded=None, declared_offers=100, loade
                 loadedSubscriptions=loaded)
 
 
+def export(publisher_id, total, status='complete'):
+    return dict(publisherReportId=publisher_id, totalSubscriptions=total, status=status)
+
+
 def example():
     return dict(activeSubscriptions=115, previousSubscriptions=100,
                 sourceSnapshots=[dict(reportId='current', activeSubscriptions=115)],
@@ -21,7 +25,9 @@ def example():
                 periodStart='2026-09-28', expectedPeriodEnd='2026-10-04',
                 asOf='2026-10-06T12:00:00Z', ingestedAt='2026-10-06T03:00:00+00:00',
                 currentReport=report('complete', '2026-10-04', 115),
-                previousReport=report('complete', '2026-09-27', 100))
+                previousReport=report('complete', '2026-09-27', 100),
+                exports=dict(current=export('pub-2026-10-04', 115),
+                             previous=export('pub-2026-09-27', 100)))
 
 
 def test_complete_comparable_snapshots():
@@ -78,4 +84,23 @@ def test_every_check_is_reported_for_the_interface():
     result = reconcile(example())
     codes = [check['code'] for check in result['evidence']['checks']]
     assert codes == ['import_fresh', 'current_complete', 'previous_complete',
-                     'current_reconciled', 'previous_reconciled', 'baseline_available']
+                     'current_reconciled', 'previous_reconciled',
+                     'current_matches_export', 'previous_matches_export',
+                     'baseline_available']
+
+
+def test_export_disagreement_blocks_the_decision():
+    evidence = example()
+    evidence['currentExport'] = None
+    evidence['exports'] = dict(current=export('pub-2026-10-04', 900), previous=export('pub-2026-09-27', 100))
+    result = reconcile(evidence)
+    assert result['evidence']['growthPct'] is None
+    assert any('we imported 115' in reason for reason in result['quality']['reasons'])
+
+
+def test_a_week_the_publisher_never_exported_blocks_the_decision():
+    evidence = example()
+    evidence['exports'] = dict(current=None, previous=export('pub-2026-09-27', 100))
+    result = reconcile(evidence)
+    assert result['quality']['status'] == 'insufficient'
+    assert any('no current report' in reason for reason in result['quality']['reasons'])

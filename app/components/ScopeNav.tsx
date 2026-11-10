@@ -56,7 +56,7 @@ export function ScopeNav({
 function stateDot(state: CaseState | undefined): string {
   if (!state) return 'dot';
   if (state.status === 'needs_attention') return 'dot dot--block';
-  return state.outcome === 'expand_promotion' ? 'dot dot--ok' : 'dot dot--warn';
+  return state.outcome === 'expand_promotion' ? 'dot dot--ok' : 'dot dot--hold';
 }
 
 function stateLabel(state: CaseState | undefined): string {

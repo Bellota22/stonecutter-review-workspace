@@ -14,64 +14,72 @@ export function CheckRow({ ok, label, detail }: { ok: boolean; label: string; de
 }
 
 /**
- * The inconsistency behind the numbers: what was counted before, what is counted now, and every
- * report that exists for the week. Collapsed to one line unless there is something to see.
+ * The inconsistency behind the numbers. Several publications can exist for one week (the publisher
+ * reissues the week as coverage grows); only one may be counted, and the export is the source of
+ * record for which one.
  */
 export function WhyCard({ view }: { view: CaseView }) {
   const before = view.previousSelection;
-  const open = before !== null;
+  const publications = view.candidates.length;
 
   return (
-    <details className="card disclosure" id="evidence" open={open}>
+    <details className="card disclosure" id="evidence" open={before !== null}>
       <summary className="disclosure__summary">
         <span className="card__title">Where the numbers came from</span>
         {before ? (
           <span className="chip chip--block">
             <span className="chip__dot" />
-            {before.reports} reports counted as one week
+            {before.reports} publications of one week
           </span>
         ) : (
           <span className="chip chip--ok">
             <span className="chip__dot" />
-            one report per week
+            one publication, one week
           </span>
         )}
       </summary>
 
       <div className="disclosure__body">
+        <p className="card__hint" style={{ marginTop: 0 }}>
+          The publisher can reissue the same week ({day(view.scope.periodStart)}) several times. All{' '}
+          {publications} rows below are that same week — a report may count only one of them, and the export
+          decides which.
+        </p>
+
         {before ? (
           <div className="recon">
             <div className="recon__side">
-              <span className="recon__label">Counted before</span>
+              <span className="recon__label">Old rule counted all of them</span>
               <span className="recon__value recon__value--before">{number(before.total)}</span>
-              <span className="recon__delta">sum of {before.reports} revisions</span>
+              <span className="recon__delta">{before.reports} publications added together</span>
             </div>
             <div className="recon__arrow" aria-hidden="true">
               →
             </div>
             <div className="recon__side">
-              <span className="recon__label">Counted now</span>
+              <span className="recon__label">This review counts one</span>
               <span className="recon__value recon__value--after">
                 {number(view.evidence.activeSubscriptions)}
               </span>
               <span className="recon__delta">
-                −{number(before.total - (view.evidence.activeSubscriptions ?? 0))} duplicate subscriptions
+                −{number(before.total - (view.evidence.activeSubscriptions ?? 0))} subscriptions that never
+                existed in one week
               </span>
             </div>
           </div>
         ) : null}
 
         <div className="table-wrap">
-          <table className="data">
+          <table className="data data--recon">
             <thead>
               <tr>
-                <th scope="col">Report</th>
+                <th scope="col">Publication</th>
                 <th scope="col">Coverage</th>
                 <th scope="col" className="num">
-                  Declared
+                  Export
                 </th>
                 <th scope="col" className="num">
-                  Imported
+                  Our import
                 </th>
                 <th scope="col">Status</th>
               </tr>
@@ -79,17 +87,28 @@ export function WhyCard({ view }: { view: CaseView }) {
             <tbody>
               {view.candidates.map((candidate) => {
                 const selected = candidate.verdict === 'selected';
+                const gap =
+                  candidate.exportTotal !== null && candidate.exportTotal !== candidate.loadedSubscriptions;
                 return (
                   <tr key={candidate.reportId} className={selected ? 'is-selected' : 'is-rejected'}>
                     <td>
                       <span className="candidate__id">{candidate.publisherReportId}</span>
-                      <span className="candidate__sub">issued {day(candidate.generatedAt)}</span>
+                      <span className="candidate__sub">
+                        {selected
+                          ? `issued ${day(candidate.generatedAt)}`
+                          : candidate.reason.replace(/^Rejected: /, '')}
+                      </span>
                     </td>
                     <td>
                       {candidate.status === 'complete' ? 'Full week' : 'Partial'}
                       <span className="candidate__sub">through {day(candidate.periodEnd)}</span>
                     </td>
-                    <td className="num">{number(candidate.declaredSubscriptions)}</td>
+                    <td className="num">
+                      {candidate.exportTotal === null ? '—' : number(candidate.exportTotal)}
+                      {candidate.exportTotal === null ? (
+                        <span className="candidate__sub">not published</span>
+                      ) : null}
+                    </td>
                     <td className="num">
                       {number(candidate.loadedSubscriptions)}
                       {candidate.loadedOffers !== candidate.declaredOfferCount ? (
@@ -97,12 +116,12 @@ export function WhyCard({ view }: { view: CaseView }) {
                           {candidate.loadedOffers}/{candidate.declaredOfferCount} offers
                         </span>
                       ) : null}
+                      {gap ? <span className="candidate__gap">differs from export</span> : null}
                     </td>
                     <td>
                       <span className={`tag tag--${selected ? 'selected' : 'rejected'}`}>
                         {selected ? 'Counted' : 'Not counted'}
                       </span>
-                      <span className="candidate__sub">{candidate.reason.replace(/^Rejected: /, '')}</span>
                     </td>
                   </tr>
                 );

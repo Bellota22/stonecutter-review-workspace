@@ -1,5 +1,6 @@
 import type { CaseView } from '../../src/server/caseService.ts';
 import { verdictHeadline } from '../../src/domain/clientReport.ts';
+import { CHECK_LABELS } from './primitives.tsx';
 import { CheckRow } from './WhyCard.tsx';
 
 /** The verdict as a single banner: what the evidence supports, and the shortest reason why. */
@@ -47,16 +48,7 @@ export function ChecksCard({ view }: { view: CaseView }) {
           <CheckRow
             key={check.code}
             ok={check.ok}
-            label={
-              {
-                import_fresh: 'Import freshness',
-                current_complete: 'Current week coverage',
-                previous_complete: 'Previous week coverage',
-                current_reconciled: 'Current week vs publisher',
-                previous_reconciled: 'Previous week vs publisher',
-                baseline_available: 'Baseline available',
-              }[check.code] ?? check.code
-            }
+            label={CHECK_LABELS[check.code] ?? check.code}
             detail={check.detail}
           />
         ))}

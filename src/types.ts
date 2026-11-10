@@ -18,6 +18,19 @@ export interface SourceReport {
   loadedSubscriptions: number;
 }
 
+/** One row of the publisher's own export: the source of record for a published report. */
+export interface PublisherExport {
+  publisherReportId: string;
+  brandId: string;
+  marketplace: string;
+  periodStart: string;
+  periodEnd: string;
+  status: string;
+  supersededBy: string;
+  declaredSubscriptions: number;
+  totalSubscriptions: number;
+}
+
 /** A named, human-readable evidence check. The decision policy reads these, the interface shows them. */
 export interface EvidenceCheck {
   code:
@@ -26,6 +39,8 @@ export interface EvidenceCheck {
     | 'previous_complete'
     | 'current_reconciled'
     | 'previous_reconciled'
+    | 'current_matches_export'
+    | 'previous_matches_export'
     | 'baseline_available';
   ok: boolean;
   detail: string;
@@ -57,6 +72,8 @@ export interface Evidence {
   reconciliationDelta?: number | null;
   currentReport: SourceReport | null;
   previousReport: SourceReport | null;
+  currentExport: PublisherExport | null;
+  previousExport: PublisherExport | null;
   checks?: EvidenceCheck[];
 }
 export interface Quality {

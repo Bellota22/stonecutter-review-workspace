@@ -1,6 +1,7 @@
 import type { PGlite } from '@electric-sql/pglite';
 import { AS_OF, PERIOD_START, PERIOD_END, PREVIOUS_START, queryRows } from './database.ts';
 import type { Evidence, SourceReport } from './types.ts';
+import { exportFor } from './server/publisherExports.ts';
 
 /** Evidence for one scope: the selected snapshot per week, its publisher control totals and context. */
 export const SNAPSHOT_SQL = `
@@ -115,6 +116,11 @@ export async function getEvidence(db: PGlite, brandId: string, marketplace = 'US
   const currentReport = current ? toSourceReport(current) : null;
   const previousReport = previous ? toSourceReport(previous) : null;
 
+  const [currentExport, previousExport] = await Promise.all([
+    exportFor(brandId, marketplace, PERIOD_START),
+    exportFor(brandId, marketplace, PREVIOUS_START),
+  ]);
+
   return {
     brandId,
     brandName: brand.name,
@@ -141,6 +147,8 @@ export async function getEvidence(db: PGlite, brandId: string, marketplace = 'US
     inventoryUnits: context.inventoryUnits,
     currentReport,
     previousReport,
+    currentExport,
+    previousExport,
   };
 }
 

@@ -88,8 +88,13 @@ function parseReconciled(stdout: string): { evidence: Evidence; quality: Quality
 }
 
 export function reconcile(evidence: Evidence): { evidence: Evidence; quality: Quality } {
+  // The authoritative export rows travel with the evidence so the checks can compare against them.
+  const payload = {
+    ...evidence,
+    exports: { current: evidence.currentExport, previous: evidence.previousExport },
+  };
   const result = spawnSync(pythonCommand(), [path.join(ROOT, 'python/reconcile.py')], {
-    input: JSON.stringify(evidence),
+    input: JSON.stringify(payload),
     encoding: 'utf8',
     timeout: 10000,
     maxBuffer: 1024 * 1024,

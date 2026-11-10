@@ -91,6 +91,8 @@ export async function POST(request: Request) {
         outcome: decision.decision.outcome,
         budgetChangePct: decision.decision.budgetChangePct,
         limitations: decision.decision.limitations,
+        reason: decision.decision.reason,
+        createdAt: decision.decision.createdAt,
         evidenceFingerprint: decision.decision.evidenceFingerprint,
         scope: { brandId: decision.view.scope.brandId, marketplace: decision.view.scope.marketplace },
       },

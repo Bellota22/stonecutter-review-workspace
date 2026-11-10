@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { appendFile, copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { openDatabase, queryRows } from '../src/database.ts';
+import { ROOT, openDatabase, queryRows } from '../src/database.ts';
 import { migrate } from '../src/server/db.ts';
 import { latestDecision } from '../src/server/reviewStore.ts';
 import { PolicyViolation, generateReport, openCase, saveDecision } from '../src/server/caseService.ts';
@@ -11,6 +11,46 @@ import { PolicyViolation, generateReport, openCase, saveDecision } from '../src/
 async function runtime() {
   const dir = await mkdtemp(path.join(tmpdir(), 'review-case-'));
   return { dir, db: path.join(dir, 'marketplace'), cleanup: () => rm(dir, { recursive: true, force: true }) };
+}
+
+/**
+ * A publisher reissue, reproduced faithfully: the new report is imported AND the publisher export
+ * records it as the current publication. Pointing the exports at an isolated copy keeps the bundled
+ * inputs untouched, which is what the brief allows for changed-evidence tests.
+ */
+async function reissueExports(): Promise<{ restore: () => void }> {
+  const dir = await mkdtemp(path.join(tmpdir(), 'exports-'));
+  const source = path.join(ROOT, 'data/exports');
+  await copyFile(path.join(source, 'subscription_reports.csv'), path.join(dir, 'subscription_reports.csv'));
+  await copyFile(path.join(source, 'subscription_offers.csv'), path.join(dir, 'subscription_offers.csv'));
+
+  // The publisher supersedes g3 with g4: mark the old row and publish the new one.
+  const reportsPath = path.join(dir, 'subscription_reports.csv');
+  const lines = (await readFile(reportsPath, 'utf8')).trimEnd().split('\n');
+  const superseded = lines.map((line) => {
+    const cells = line.split(',');
+    if (cells[0] !== 'US-lumen-home-2026-09-28-g3') return line;
+    cells[7] = 'US-lumen-home-2026-09-28-g4';
+    return cells.join(',');
+  });
+  superseded.push(
+    'US-lumen-home-2026-09-28-g4,lumen-home,US,2026-09-28,2026-10-04,complete,2026-10-06T05:00:00Z,,1,9900',
+  );
+  await writeFile(reportsPath, `${superseded.join('\n')}\n`);
+  await appendFile(
+    path.join(dir, 'subscription_offers.csv'),
+    'US-lumen-home-2026-09-28-g4,offer-1,SYN0000001,9900\n',
+  );
+
+  const previous = process.env.ASSESSMENT_EXPORTS_DIR;
+  process.env.ASSESSMENT_EXPORTS_DIR = dir;
+  return {
+    restore: () => {
+      if (previous === undefined) delete process.env.ASSESSMENT_EXPORTS_DIR;
+      else process.env.ASSESSMENT_EXPORTS_DIR = previous;
+      void rm(dir, { recursive: true, force: true });
+    },
+  };
 }
 
 async function open(runtimePath: string) {
@@ -23,15 +63,18 @@ test('a saved decision survives stopping and restarting the solution', async () 
   const work = await runtime();
   try {
     const first = await open(work.db);
-    const opened = await openCase(first, 'lumen-home', 'CA');
-    assert.equal(opened.status, 'open');
-    const { decision } = await saveDecision(first, 'lumen-home', 'CA', {
-      outcome: 'expand_promotion',
-      reason: 'Both weeks reconcile to the publisher header and growth is complete and comparable.',
-    });
-    assert.equal(decision.version, 1);
-    assert.equal(decision.budgetChangePct, 10, 'the policy budget is applied, not a requested one');
-    await first.close();
+    try {
+      const opened = await openCase(first, 'lumen-home', 'CA');
+      assert.equal(opened.status, 'open');
+      const { decision } = await saveDecision(first, 'lumen-home', 'CA', {
+        outcome: 'expand_promotion',
+        reason: 'Both weeks reconcile to the publisher header and growth is complete and comparable.',
+      });
+      assert.equal(decision.version, 1);
+      assert.equal(decision.budgetChangePct, 10, 'the policy budget is applied, not a requested one');
+    } finally {
+      await first.close();
+    }
 
     const second = await open(work.db);
     try {
@@ -113,33 +156,42 @@ test('changed evidence marks the review as requiring attention instead of reusin
       const before = await generateReport(db, 'lumen-home', 'US');
       assert.equal(before.kind, 'ready');
 
-      // The publisher reissues the week in an isolated copy of the working database.
-      await db.query(`INSERT INTO raw.subscription_reports
+      // The publisher reissues the week: new import, and the export records it as current.
+      const reissue = await reissueExports();
+      try {
+        await db.query(`INSERT INTO raw.subscription_reports
         (report_id, brand_id, marketplace, period_start, period_end, revision, status, extracted_at,
          publisher_report_id, generated_at, declared_offer_count, declared_active_subscriptions)
         VALUES ('lumen-us-w12-r4','lumen-home','US','2026-09-28','2026-10-04',4,'complete','2026-10-06T06:00:00Z',
                 'US-lumen-home-2026-09-28-g4','2026-10-06T05:00:00Z',1,9900)`);
-      await db.query(`INSERT INTO raw.subscription_offers (report_id, offer_id, asin, active_subscriptions)
+        await db.query(`INSERT INTO raw.subscription_offers (report_id, offer_id, asin, active_subscriptions)
         VALUES ('lumen-us-w12-r4','offer-1','SYN0000001',9900)`);
 
-      const after = await generateReport(db, 'lumen-home', 'US');
-      assert.equal(after.kind, 'requires_attention', 'the old approval is not reused');
-      if (after.kind !== 'requires_attention') return;
-      assert.ok(
-        after.changes.some((c) => c.includes('US-lumen-home-2026-09-28-g4')),
-        `changes name the new report: ${after.changes}`,
-      );
+        const after = await generateReport(db, 'lumen-home', 'US');
+        assert.equal(after.kind, 'requires_attention', 'the old approval is not reused');
+        if (after.kind !== 'requires_attention') return;
+        assert.ok(
+          after.changes.some((c) => c.includes('US-lumen-home-2026-09-28-g4')),
+          `changes name the new report: ${after.changes}`,
+        );
 
-      const reopened = await openCase(db, 'lumen-home', 'US');
-      assert.equal(reopened.status, 'needs_attention');
-      assert.equal(reopened.evidence.activeSubscriptions, 9900, 'the new publisher report drives the figure');
+        const reopened = await openCase(db, 'lumen-home', 'US');
+        assert.equal(reopened.status, 'needs_attention');
+        assert.equal(
+          reopened.evidence.activeSubscriptions,
+          9900,
+          'the new publisher report drives the figure',
+        );
 
-      // Revalidating on the new evidence clears the attention state.
-      await saveDecision(db, 'lumen-home', 'US', {
-        outcome: 'expand_promotion',
-        reason: 'Revalidated after the publisher reissue; growth is now 10%.',
-      });
-      assert.equal((await generateReport(db, 'lumen-home', 'US')).kind, 'ready');
+        // Revalidating on the new evidence clears the attention state.
+        await saveDecision(db, 'lumen-home', 'US', {
+          outcome: 'expand_promotion',
+          reason: 'Revalidated after the publisher reissue; growth is now 10%.',
+        });
+        assert.equal((await generateReport(db, 'lumen-home', 'US')).kind, 'ready');
+      } finally {
+        reissue.restore();
+      }
     } finally {
       await db.close();
     }
@@ -167,6 +219,41 @@ test('every candidate report carries the reason it was not used', async () => {
       assert.ok(
         reasons.some((r) => /superseded/i.test(r)),
         `supersession is explained: ${reasons.join(' | ')}`,
+      );
+    } finally {
+      await db.close();
+    }
+  } finally {
+    await work.cleanup();
+  }
+});
+
+test('a report the publisher never exported cannot be approved', async () => {
+  const work = await runtime();
+  try {
+    const db = await open(work.db);
+    try {
+      await db.query(`INSERT INTO raw.subscription_reports
+        (report_id, brand_id, marketplace, period_start, period_end, revision, status, extracted_at,
+         publisher_report_id, generated_at, declared_offer_count, declared_active_subscriptions)
+        VALUES ('lumen-us-w12-r9','lumen-home','US','2026-09-28','2026-10-04',9,'complete','2026-10-06T07:00:00Z',
+                'US-lumen-home-2026-09-28-g9','2026-10-06T06:00:00Z',1,9999)`);
+      await db.query(`INSERT INTO raw.subscription_offers (report_id, offer_id, asin, active_subscriptions)
+        VALUES ('lumen-us-w12-r9','offer-1','SYN0000001',9999)`);
+
+      const view = await openCase(db, 'lumen-home', 'US');
+      assert.equal(view.evidence.currentReport?.publisherReportId, 'US-lumen-home-2026-09-28-g9');
+      assert.ok(
+        (view.evidence.checks ?? []).some((check) => check.code === 'current_matches_export' && !check.ok),
+        'the export check names the unverifiable report',
+      );
+      assert.equal(view.verdict.outcome, 'hold');
+      await assert.rejects(
+        saveDecision(db, 'lumen-home', 'US', {
+          outcome: 'expand_promotion',
+          reason: 'A number we cannot verify.',
+        }),
+        PolicyViolation,
       );
     } finally {
       await db.close();

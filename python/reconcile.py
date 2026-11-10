@@ -48,6 +48,21 @@ def _ingestion(report, label):
         label, loaded_offers, loaded_subs)
 
 
+def _matches_export(report, export, label):
+    if export is None:
+        return False, '%s: the publisher export has no current report for this week.' % label
+    if report is None:
+        return False, '%s: no report was selected, the export has %s.' % (label, export.get('publisherReportId'))
+    if report.get('publisherReportId') != export.get('publisherReportId'):
+        return False, '%s: we counted %s, the publisher export says %s is current.' % (
+            label, report.get('publisherReportId'), export.get('publisherReportId'))
+    exported, imported = int(export.get('totalSubscriptions') or 0), int(report.get('loadedSubscriptions') or 0)
+    if exported != imported:
+        return False, '%s: the export totals %s subscriptions for %s, we imported %s.' % (
+            label, exported, export.get('publisherReportId'), imported)
+    return True, '%s: %s subscriptions match the publisher export %s.' % (label, imported, export.get('publisherReportId'))
+
+
 def reconcile(evidence):
     ev = dict(evidence)
     current, previous = ev.get('currentReport'), ev.get('previousReport')
@@ -70,6 +85,12 @@ def reconcile(evidence):
     for code, report, label in (('current_reconciled', current, 'Current week'),
                                 ('previous_reconciled', previous, 'Previous week')):
         ok, detail = _ingestion(report, label)
+        checks.append({'code': code, 'ok': ok, 'detail': detail})
+
+    exports = ev.get('exports') or {}
+    for code, report, export, label in (('current_matches_export', current, exports.get('current'), 'Current week'),
+                                        ('previous_matches_export', previous, exports.get('previous'), 'Previous week')):
+        ok, detail = _matches_export(report, export, label)
         checks.append({'code': code, 'ok': ok, 'detail': detail})
 
     current_subs, previous_subs = ev.get('activeSubscriptions'), ev.get('previousSubscriptions')

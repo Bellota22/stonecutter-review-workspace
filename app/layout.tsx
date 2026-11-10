@@ -15,10 +15,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         <header className="masthead">
-          <div className="brandmark">
+          <Link href="/" className="brandmark" aria-label="Stonecutter review workspace, back to all scopes">
             <strong>Stonecutter</strong>
             <span>Marketplace operations</span>
-          </div>
+          </Link>
           <div className="masthead__meta">
             <span>Reporting week 28 Sep – 4 Oct 2026</span>
             <Link href="/" className="button button--ghost">

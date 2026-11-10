@@ -15,6 +15,8 @@ export const CHECK_LABELS: Record<string, string> = {
   previous_complete: 'Previous week coverage',
   current_reconciled: 'Current week vs publisher',
   previous_reconciled: 'Previous week vs publisher',
+  current_matches_export: 'Current week vs export',
+  previous_matches_export: 'Previous week vs export',
   baseline_available: 'Baseline available',
 };
 

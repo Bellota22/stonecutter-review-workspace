@@ -6,6 +6,15 @@ import type { CaseView } from '../../src/server/caseService.ts';
 import type { Outcome } from '../../src/types.ts';
 import { StepBadge, day } from './primitives.tsx';
 
+interface SavedDecision {
+  version: number;
+  outcome: Outcome;
+  budgetChangePct: number;
+  limitations: string[];
+  createdAt: string;
+  reason: string;
+}
+
 type Feedback =
   | { kind: 'idle' }
   | { kind: 'busy' }
@@ -21,7 +30,10 @@ export function DecisionRail({ view }: { view: CaseView }) {
   );
   const [reason, setReason] = useState('');
   const [feedback, setFeedback] = useState<Feedback>({ kind: 'idle' });
+  const [saved, setSaved] = useState<SavedDecision | null>(null);
   const ready = reason.trim().length >= 10;
+  // The server render catches up on refresh; until then the response is what the user just created.
+  const current = saved && (!view.decision || saved.version >= view.decision.version) ? saved : view.decision;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -39,6 +51,14 @@ export function DecisionRail({ view }: { view: CaseView }) {
       });
       const body = await response.json();
       if (response.ok) {
+        setSaved({
+          version: body.version,
+          outcome: body.outcome,
+          budgetChangePct: body.budgetChangePct,
+          limitations: body.limitations ?? [],
+          createdAt: body.createdAt ?? new Date().toISOString(),
+          reason: reason.trim(),
+        });
         setReason('');
         setFeedback({ kind: 'idle' });
         router.refresh();
@@ -117,6 +137,7 @@ export function DecisionRail({ view }: { view: CaseView }) {
         <label className="field">
           <span className="field__label">Reason</span>
           <textarea
+            id="reason"
             rows={3}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
@@ -146,7 +167,7 @@ export function DecisionRail({ view }: { view: CaseView }) {
           className="button button--primary button--block"
           disabled={!ready || feedback.kind === 'busy'}
         >
-          {feedback.kind === 'busy' ? 'Saving…' : view.decision ? 'Save new version' : 'Save decision'}
+          {feedback.kind === 'busy' ? 'Saving…' : current ? 'Save new version' : 'Save decision'}
         </button>
 
         {view.decision ? (
@@ -165,9 +186,9 @@ export function DecisionRail({ view }: { view: CaseView }) {
         ) : null}
       </form>
 
-      <a className={`railjump${view.decision ? '' : ' railjump--muted'}`} href="#report">
-        <StepBadge step={2} done={Boolean(view.decision)} />
-        <span>{view.decision ? 'Client report ready below' : 'Report unlocks after the decision'}</span>
+      <a className={`railjump${current ? '' : ' railjump--muted'}`} href="#report">
+        <StepBadge step={2} done={Boolean(current)} />
+        <span>{current ? 'Client report ready below' : 'Report unlocks after the decision'}</span>
         <span aria-hidden="true">↓</span>
       </a>
     </aside>

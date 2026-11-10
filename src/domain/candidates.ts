@@ -3,6 +3,8 @@ import type { CandidateReport } from '../metrics.ts';
 export interface CandidateView extends CandidateReport {
   verdict: 'selected' | 'rejected';
   reason: string;
+  /** What the publisher export says this report totals, when the publisher published it. */
+  exportTotal: number | null;
 }
 
 export interface PreviousSelection {
@@ -35,14 +37,20 @@ function rejectionReason(candidate: CandidateReport, selected: CandidateReport |
   return 'Rejected: a higher-precedence report is selected for this week.';
 }
 
-/** Pairs every report with the outcome of the selection and the reason behind it. */
-export function explainCandidates(candidates: CandidateReport[]): CandidateView[] {
+/** Pairs every report with the outcome of the selection, the reason, and the publisher export total. */
+export function explainCandidates(
+  candidates: CandidateReport[],
+  exportTotals: Map<string, number> = new Map(),
+): CandidateView[] {
   const selected = candidates.find((candidate) => candidate.selected);
-  return candidates.map((candidate) =>
-    candidate.selected
-      ? { ...candidate, verdict: 'selected', reason: 'Selected: the publisher current report for this week.' }
-      : { ...candidate, verdict: 'rejected', reason: rejectionReason(candidate, selected) },
-  );
+  return candidates.map((candidate) => ({
+    ...candidate,
+    verdict: candidate.selected ? 'selected' : 'rejected',
+    reason: candidate.selected
+      ? 'Selected: the publisher current report for this week.'
+      : rejectionReason(candidate, selected),
+    exportTotal: exportTotals.get(candidate.publisherReportId) ?? null,
+  }));
 }
 
 /**

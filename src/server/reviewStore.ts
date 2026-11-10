@@ -183,3 +183,13 @@ export async function listCaseStates(db: PGlite): Promise<CaseState[]> {
     ) d ON true`,
   );
 }
+
+/** Every decision recorded for a case, newest first: the audit trail a reviewer can read. */
+export async function listDecisions(db: PGlite, caseId: string, limit = 20): Promise<DecisionRow[]> {
+  const rows = await queryRows<DecisionRow>(
+    db,
+    `SELECT ${DECISION_COLUMNS} FROM review.decision WHERE case_id = $1 ORDER BY version DESC LIMIT $2`,
+    [caseId, limit],
+  );
+  return rows.map(toDecisionRow);
+}
