@@ -62,37 +62,10 @@ production platform. Focused partial work is welcome; explain what works and wha
   is not required. Your submitted workflow must run locally without paid services,
   external API keys, a cloud account or deployment.
 
-## Quick start
+## Quick start (Docker Compose)
 
-Prerequisites: **Node.js 22 or 24 LTS**, npm, **Python 3.11+** (with venv/pip), and internet access for the initial dependency
-installation. Verified on macOS; Windows and Linux have not been tested. The commands
-use Node/npm without shell-specific syntax. No API keys, cloud
-accounts, Docker, database server or paid services are needed. After installation,
-the application runs offline. Extract the ZIP and open a terminal inside `engineering-assessment`;
-it is already a Git repository (`git log` shows the `starter` commit).
-
-```sh
-npm ci
-npm run setup
-npm run demo
-npm test
-```
-
-`npm run setup` creates `.venv` and installs pytest. No activation is needed. `npm test`
-runs both TypeScript and Python tests; `npm run test:python` runs pytest alone.
-The runtime Python module uses only the standard library. If Python is installed under
-a custom path, set `PYTHON` to that executable before setup. Runtime and tests prefer the created `.venv`.
-
-The database is included as `data/marketplace.pglite`, a compressed PostgreSQL data-directory
-snapshot loaded by PGlite. The first command opens a working copy under `.runtime/`.
-Run commands from this project directory. If your Node version differs, check `node --version`.
-For a setup blocker, contact the person who sent the assessment; report the error and time
-spent rather than spending the exercise troubleshooting your environment.
-
-## Run with Docker
-
-Docker Desktop, or any Docker Engine with Compose v2, replaces the Node, npm and Python setup
-above. This is the shortest path to a running workspace.
+Docker Desktop, or any Docker Engine with Compose v2, is the shortest path: no host Node, npm or
+Python setup is needed.
 
 ```sh
 docker compose up --build
@@ -101,22 +74,46 @@ docker compose up --build
 Then open **<http://localhost:3000>**. The workspace runs on port 3000, and every scope has its own
 case, for example <http://localhost:3000/case/cedar-coast/US>.
 
-Review state lives in the `review-runtime` volume:
+Review state lives in the `review-runtime` volume, so it survives the container:
 
 - `docker compose restart` reopens the same saved decisions;
 - `docker compose down` keeps the volume and its decisions;
 - `docker compose down -v` deletes it and starts again from the bundled snapshot.
 
-Without Compose:
+The image runs the Next.js server plus the stdlib-only Python reconciliation (Python 3.11 comes from
+the base image). Without Compose:
 
 ```sh
 docker build -t stonecutter-review-workspace .
 docker run --rm -p 3000:3000 -v stonecutter-runtime:/app/.runtime stonecutter-review-workspace
 ```
 
-The image runs the Next.js server plus the stdlib-only Python reconciliation (Python 3.11 comes from
-the base image), so `npm ci` and `npm run setup` are not needed on the host. The container serves the
-workflow; run `npm test` on the host if you also want the test suites.
+### Local Node and Python instead
+
+Prerequisites: **Node.js 22 or 24 LTS**, npm, **Python 3.11+** (with venv/pip), and internet access for
+the initial dependency installation. Verified on macOS; Windows and Linux have not been tested. The
+commands use Node/npm without shell-specific syntax. No API keys, cloud accounts, Docker, database
+server or paid services are needed. After installation, the application runs offline. Extract the ZIP
+and open a terminal inside `engineering-assessment`; it is already a Git repository (`git log` shows
+the `starter` commit).
+
+```sh
+npm ci
+npm run setup
+npm run demo
+npm test
+```
+
+`npm run setup` creates `.venv` and installs pytest. No activation is needed. `npm test` runs both
+TypeScript and Python tests; `npm run test:python` runs pytest alone. The runtime Python module uses
+only the standard library. If Python is installed under a custom path, set `PYTHON` to that executable
+before setup. Runtime and tests prefer the created `.venv`.
+
+The database is included as `data/marketplace.pglite`, a compressed PostgreSQL data-directory
+snapshot loaded by PGlite. The first command opens a working copy under `.runtime/`. Run commands from
+this project directory. If your Node version differs, check `node --version`. For a setup blocker,
+contact the person who sent the assessment; report the error and time spent rather than spending the
+exercise troubleshooting your environment.
 
 ## Investigating
 

@@ -1,11 +1,15 @@
 # Review workspace: http://localhost:3000
 #
-# The review state lives in the `review-runtime` volume, so `docker compose restart`
-# (or `down` without `-v`) reopens the same saved decisions.
+#   docker compose up --build     start (builds the image the first time)
+#   docker compose restart        reopen the same saved decisions
+#   docker compose down           stop, keep the review state volume
+#   docker compose down -v        stop and start again from the bundled snapshot
 services:
   workspace:
     build: .
     image: stonecutter-review-workspace
+    init: true
+    restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
