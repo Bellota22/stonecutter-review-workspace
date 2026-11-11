@@ -16,6 +16,10 @@ docker compose up --build      # then open http://localhost:3000
 State (decisions, versions, audit events) lives in the `review-runtime` volume:
 `docker compose restart` reopens it, `docker compose down -v` starts again from the bundled snapshot.
 
+Optional overrides live in [`.env.example`](.env.example): `ASSESSMENT_LATENCY_MS` (demo latency),
+`ASSESSMENT_EXPORTS_DIR` (run against another dataset), `PYTHON` (interpreter path). Copy it to
+`.env.local`, or export the variables; the defaults need nothing.
+
 Without Docker:
 
 ```sh
@@ -89,6 +93,8 @@ authorize anything.
 ## Architecture
 
 ![Architecture: inputs, pipeline and evidence, validation and policy, review case and outputs](docs/architecture.svg)
+
+The same diagram in Mermaid, which renders on the repository page: [`docs/architecture.md`](docs/architecture.md).
 
 The same flow in words, band by band:
 

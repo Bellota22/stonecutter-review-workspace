@@ -13,3 +13,8 @@ __pycache__/
 .next/
 next-env.d.ts
 *.tsbuildinfo
+
+# Local environment files (the example is committed on purpose)
+.env
+.env.*
+!.env.example
