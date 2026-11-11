@@ -141,6 +141,24 @@ sql/select-reports.sql  the correction
 
 To see the loading states: `ASSESSMENT_LATENCY_MS=800 docker compose up --build` and open a case.
 
+## Data, schema and scripts: what changed and who owns it
+
+The brief fixes `data/` and the `raw.*` definitions, and asks for review state in separate tables with
+documented ownership. `git diff starter..HEAD -- data/ sql/schema.sql` is empty: the bundled snapshot,
+the publisher exports and the raw/marts definitions are byte-for-byte as delivered.
+
+| Layer | Owner | Lifecycle |
+| --- | --- | --- |
+| `data/marketplace.pglite`, `data/exports/*.csv` | the exercise, read-only contract | never written by the app; the exports are read at runtime and can be redirected with `ASSESSMENT_EXPORTS_DIR` |
+| `raw.*` | the source contract | read-only for the app |
+| `marts.subscription_weekly` | the app, derived | rebuilt from `sql/select-reports.sql` on every case open, inside one transaction (`src/database.ts`) |
+| `review.review_case`, `review.decision`, `review.event` | the app | created at boot by `migrate()` in `src/server/db.ts` with `CREATE ... IF NOT EXISTS`; they live in the working copy `.runtime/marketplace` (or the `review-runtime` volume), survive a restart, and are dropped by `npm run reset` / `docker compose down -v` |
+
+Changed scripts and queries are listed with their reasons in "Why each change was made", and
+`sql/select-reports.sql` carries the selection rule as a comment next to the code. The audit trail is
+the git history: 17 commits on top of the preserved `starter` tag, each with a Conventional Commit
+message, inside the repository that came in the ZIP. No new repository was created.
+
 ## Limitations and unfinished work
 
 - The truncated moss-trail import is detected and blocks the decision; it is not repaired (the fixture
