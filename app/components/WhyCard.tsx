@@ -49,7 +49,7 @@ export function WhyCard({ view }: { view: CaseView }) {
         {before ? (
           <div className="recon">
             <div className="recon__side">
-              <span className="recon__label">Old rule counted all of them</span>
+              <span className="recon__label">Starter query: all three added</span>
               <span className="recon__value recon__value--before">{number(before.total)}</span>
               <span className="recon__delta">{before.reports} publications added together</span>
             </div>
@@ -57,7 +57,7 @@ export function WhyCard({ view }: { view: CaseView }) {
               →
             </div>
             <div className="recon__side">
-              <span className="recon__label">This review counts one</span>
+              <span className="recon__label">Selected report: one counted</span>
               <span className="recon__value recon__value--after">
                 {number(view.evidence.activeSubscriptions)}
               </span>

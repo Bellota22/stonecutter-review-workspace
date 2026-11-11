@@ -34,11 +34,14 @@ npm run verify                              # prettier + tsc + 15 TS tests + 9 P
 
 ## The correction
 
-The weekly mart was built from `sql/select-reports.sql`, which ranked reports only by status and kept
-every row tied at the top. A week the publisher reissued three times was therefore counted three times,
-and our own import sequence decided which publication won.
+The weekly mart is built from `sql/select-reports.sql`. **As delivered in the `starter` commit** that
+query ranked reports only by status and kept every row tied at the top, so a week the publisher
+reissued three times was counted three times; and it broke remaining ties with our own import
+sequence, so a re-imported stale publication outranked the publisher's correction. Nothing in this
+section refers to an earlier version of this solution: it is the code we were given, and
+`git diff starter -- sql/select-reports.sql` is the whole change.
 
-| Scope | Before | After | Publisher current report |
+| Scope | As delivered | Now | Publisher current report |
 | --- | --- | --- | --- |
 | cedar-coast / US | 24,750 (three publications added) — "+217.31% growth" | **8,400**, partial through 2026-10-02, growth **not comparable** | `US-cedar-coast-2026-09-28-g3` |
 | harbor-pantry / CA | 11,780 (a re-import of g3 outranked the reissue g4) — "+227.22%" | **3,780**, growth **5.00%** | `CA-harbor-pantry-2026-09-28-g4` |
@@ -48,6 +51,22 @@ and our own import sequence decided which publication won.
 Selection order, encoded once in SQL: complete beats partial → wider `period_end` wins → the
 publisher's newest `generated_at` wins (this is the correction: `revision` is our import counter, not
 the publisher's) → `revision`, `extracted_at`, `report_id` break exact ties.
+
+## Why each change was made
+
+Every change below answers something the delivered starter did, not an earlier version of this
+solution. `git diff starter..HEAD` is the whole story.
+
+| Change | Why | Where to see it |
+| --- | --- | --- |
+| `sql/select-reports.sql` selects one publication by publisher precedence | the delivered query kept every row tied at the top, so three publications of one week were summed (24,750 instead of 8,400), and the import counter could outrank the publisher's reissue | `git diff starter -- sql/select-reports.sql`, the "Where the numbers came from" table, `tests/precedence.test.ts` |
+| `python/reconcile.py` runs eight checks and only then computes growth | quality only looked at import age, so a partial week and a truncated import still reported "ready" | cedar and moss-trail show no growth figure; the checks card shows the measurements |
+| `src/domain/policy.ts` owns the decision | the starter validated the shape of the provider output (0–25%), so a 20% suggestion taken from a note passed validation | `422` with the named reasons; the recommendation text says only 10% is authorized |
+| `src/metrics.ts` carries the selected report, the publisher control totals and the export | without them nothing can be compared against the source of record | the detail line of each check |
+| `src/server/*` plus the Server Action add case storage and the mutation path | the brief requires backend-owned state that survives a restart and refuses decisions; the starter had no persistence at all | save, `docker compose restart`, reload: the version is still there |
+| `app/*` adds the Next.js workspace | the brief requires a React + TypeScript visual artifact; the delivered starter was a CLI only | the interface itself |
+| Prettier, stricter TypeScript, the domain split | reviewable code and fewer hidden assumptions; the vocabulary module also generates the database `CHECK` constraints, so schema and code cannot drift | `npm run verify`, `git diff starter -- tsconfig.json` |
+| PDF export, decision history, demo latency | requested while reviewing the result; the export goes beyond the brief and is labelled as such | report card, history card, `ASSESSMENT_LATENCY_MS` |
 
 ## How the evidence is verified
 
