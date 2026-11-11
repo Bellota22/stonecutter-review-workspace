@@ -10,6 +10,9 @@ services:
     image: stonecutter-review-workspace
     init: true
     restart: unless-stopped
+    environment:
+      # Set ASSESSMENT_LATENCY_MS=800 to make the per-section loading states visible.
+      ASSESSMENT_LATENCY_MS: ${ASSESSMENT_LATENCY_MS:-0}
     ports:
       - '3000:3000'
     volumes:

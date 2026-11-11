@@ -105,6 +105,10 @@ sql/select-reports.sql  the correction
   fingerprint, with the current version tagged.
 - Hover and focus-visible states on every clickable surface, `prefers-reduced-motion` honoured, and
   the layout checked at 1440 px and 390 px.
+- The case streams in sections (navigation, summary, evidence, checks, history, decision rail,
+  report). Each one has its own skeleton, so a slow part never blanks the page. Set
+  `ASSESSMENT_LATENCY_MS=800` to stagger the sections and see every loading state; it is off by
+  default and cannot change a figure.
 
 ## Tests
 
@@ -115,6 +119,8 @@ sql/select-reports.sql  the correction
 | `tests/review-case.test.ts` | a decision survives stop/restart; the backend refuses an unsupported expansion; a publisher reissue moves the case to `needs_attention` and the old approval is not reused; a report the publisher never exported cannot be approved |
 | `tests/export-report.test.ts` | the PDF is a real document whose text carries the figures, the decision and the next step; file names mark drafts |
 | `tests/analyst.test.ts`, first three Python tests | the supplied starter behaviour still works |
+
+To see the loading states: `ASSESSMENT_LATENCY_MS=800 docker compose up --build` and open a case.
 
 ## Limitations and unfinished work
 

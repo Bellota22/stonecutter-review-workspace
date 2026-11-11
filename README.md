@@ -88,6 +88,18 @@ docker build -t stonecutter-review-workspace .
 docker run --rm -p 3000:3000 -v stonecutter-runtime:/app/.runtime stonecutter-review-workspace
 ```
 
+### See the loading states
+
+The case is streamed in sections. To make each section's placeholder observable (useful for a demo or
+a recording), turn on the demo latency knob while you start the stack:
+
+```sh
+ASSESSMENT_LATENCY_MS=800 docker compose up --build
+```
+
+Every section then waits that many milliseconds, staggered, and the page says so. It is off by
+default and only delays the response; nothing about the data or the policy changes.
+
 ### Local Node and Python instead
 
 Prerequisites: **Node.js 22 or 24 LTS**, npm, **Python 3.11+** (with venv/pip), and internet access for
