@@ -88,6 +88,20 @@ authorize anything.
 
 ## Architecture
 
+![Architecture: inputs, pipeline and evidence, validation and policy, review case and outputs](docs/architecture.svg)
+
+The same flow in words, band by band:
+
+1. **Inputs** — the bundled PGlite snapshot, the publisher exports (source of record) and the policy
+   numbers documented in `DATA_DICTIONARY.md`. Read-only.
+2. **Pipeline and evidence** — `raw.*` → `sql/select-reports.sql` (one authoritative publication per
+   week) → `marts.subscription_weekly` → `src/metrics.ts`, which carries the selected report, the
+   publisher control totals and the export row.
+3. **Validation and policy** — `python/reconcile.py` runs the eight checks; `src/domain/policy.ts`
+   turns the result into the only two outcomes. `src/model.ts` proposes and cannot authorize.
+4. **Review case and outputs** — `caseService` writes versioned decisions into the `review` tables, the
+   Server Action saves and revalidates, and the page, the PDF and the JSON API all read the same object.
+
 ```
 app/                  Next.js App Router: server components read the case, one Server Action mutates
   _actions/decision.ts        the mutation path (save + revalidate)
