@@ -52,6 +52,9 @@ section refers to an earlier version of this solution: it is the code we were gi
 | moss-trail / US | previous week 5,213 from a truncated import — "+17.02%" | growth **not comparable** (100 of 120 offers imported) | `US-moss-trail-2026-09-21-g3` |
 | lumen-home / CA | 2,800 | **2,800**, growth **12.00%** → expansion supported | `CA-lumen-home-2026-09-28-g3` |
 
+`npm run demo:ranking` prints the three ranking functions side by side over the real rows and what
+`WHERE priority = 1` returns with each, which is the shortest way to see the correction.
+
 Selection order, encoded once in SQL: complete beats partial → wider `period_end` wins → the
 publisher's newest `generated_at` wins (this is the correction: `revision` is our import counter, not
 the publisher's) → `revision`, `extracted_at`, `report_id` break exact ties.

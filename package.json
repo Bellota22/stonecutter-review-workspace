@@ -21,7 +21,8 @@
     "start": "next start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run format:check && npm run typecheck && npm test"
+    "verify": "npm run format:check && npm run typecheck && npm test",
+    "demo:ranking": "node --import tsx scripts/ranking-demo.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.9",

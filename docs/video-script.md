@@ -46,7 +46,11 @@ Switch to **Review**, expand **Where the numbers came from**.
 > ordering — complete first, wider coverage, then the publisher's newest publication — so exactly one
 > row is selected: g3, 8,400."**
 
-*(optional, two seconds)* Terminal: `git diff starter -- sql/select-reports.sql`.
+*(optional, three seconds)* Terminal: `git diff starter -- sql/select-reports.sql`.
+
+*(optional, five seconds — the clearest beat if you have room)* Terminal: `npm run demo:ranking`. It
+prints the three ranking functions over the real rows: `DENSE_RANK` keeps three rows for cedar (24,750)
+and one for the others, `ROW_NUMBER` keeps exactly one (8,400).
 
 ## 1:20 – 1:50 · Enforcement, decision, report
 
