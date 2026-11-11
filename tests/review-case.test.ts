@@ -210,7 +210,7 @@ test('every candidate report carries the reason it was not used', async () => {
       const rejected = cedar.candidates.filter((c) => c.verdict === 'rejected');
       assert.equal(rejected.length, 2);
       assert.ok(
-        rejected.every((c) => c.reason.startsWith('Rejected:')),
+        rejected.every((c) => c.reason.length > 0 && !c.reason.startsWith('Rejected:')),
         rejected.map((c) => c.reason).join(' | '),
       );
 

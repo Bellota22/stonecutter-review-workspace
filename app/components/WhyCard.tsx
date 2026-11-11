@@ -74,7 +74,7 @@ export function WhyCard({ view }: { view: CaseView }) {
             <thead>
               <tr>
                 <th scope="col">Publication</th>
-                <th scope="col">Coverage</th>
+                <th scope="col">Period</th>
                 <th scope="col" className="num">
                   Export
                 </th>
@@ -100,8 +100,12 @@ export function WhyCard({ view }: { view: CaseView }) {
                       </span>
                     </td>
                     <td>
-                      {candidate.status === 'complete' ? 'Full week' : 'Partial'}
-                      <span className="candidate__sub">through {day(candidate.periodEnd)}</span>
+                      <span className="candidate__period">
+                        {candidate.periodStart.slice(0, 10)} → {candidate.periodEnd.slice(0, 10)}
+                      </span>
+                      <span className="candidate__sub">
+                        {candidate.status === 'complete' ? 'full week' : 'partial'}
+                      </span>
                     </td>
                     <td className="num">
                       {candidate.exportTotal === null ? '—' : number(candidate.exportTotal)}

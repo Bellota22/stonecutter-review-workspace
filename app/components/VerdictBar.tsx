@@ -1,12 +1,11 @@
 import type { CaseView } from '../../src/server/caseService.ts';
-import { verdictHeadline } from '../../src/domain/clientReport.ts';
+import { nextStep, verdictHeadline } from '../../src/domain/clientReport.ts';
 import { CHECK_LABELS } from './primitives.tsx';
 import { CheckRow } from './WhyCard.tsx';
 
 /** The verdict as a single banner: what the evidence supports, and the shortest reason why. */
 export function VerdictBar({ view }: { view: CaseView }) {
   const expand = view.verdict.outcome === 'expand_promotion';
-  const blocking = view.evidence.checks?.filter((check) => !check.ok) ?? [];
   const headline = verdictHeadline(view.evidence, view.verdict);
 
   return (
@@ -17,7 +16,7 @@ export function VerdictBar({ view }: { view: CaseView }) {
         <p className="verdictbar__meta">
           {expand
             ? `all ${view.evidence.checks?.length ?? 0} checks passed`
-            : `${blocking.length} of ${view.evidence.checks?.length ?? 0} checks blocking · the promotion stays on hold`}
+            : nextStep(view.evidence, view.verdict)}
         </p>
       </div>
       <a className="verdictbar__link" href="#evidence">

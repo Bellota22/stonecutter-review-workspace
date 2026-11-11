@@ -30,7 +30,7 @@ export function DecisionRail({ view }: { view: CaseView }) {
         <div className="actioncard__head">
           <div>
             <h2 className="card__title">Record the decision</h2>
-            <p className="card__hint">Saved by the backend for this scope and week.</p>
+            <p className="card__hint">Stored by the server, keyed by scope and week.</p>
           </div>
         </div>
 

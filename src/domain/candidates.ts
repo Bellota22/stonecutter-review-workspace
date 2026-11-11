@@ -14,27 +14,24 @@ export interface PreviousSelection {
 }
 
 const time = (value: string): number => Date.parse(value);
-const day = (value: string): string => value.slice(0, 10);
 
 /**
  * Why a candidate was not used. Ordered by the same precedence the selection applies, so the
  * explanation and the selection cannot tell different stories.
  */
+/**
+ * A short reason, deliberately not repeating what the table columns already show: the period column
+ * carries the coverage range, so this says only why the row lost.
+ */
 function rejectionReason(candidate: CandidateReport, selected: CandidateReport | undefined): string {
-  if (!selected) return 'Rejected: no report could be selected for this week.';
-  if (candidate.status !== 'complete' && selected.status === 'complete') {
-    return `Rejected: ${candidate.status} coverage, while the selected report covers the full week.`;
-  }
-  if (time(candidate.periodEnd) < time(selected.periodEnd)) {
-    return `Rejected: coverage ends ${day(candidate.periodEnd)}, the selected report ends ${day(selected.periodEnd)}.`;
-  }
+  if (!selected) return 'no report selected for this week';
+  if (candidate.status !== 'complete' && selected.status === 'complete') return 'partial week';
+  if (time(candidate.periodEnd) < time(selected.periodEnd)) return 'shorter coverage';
   if (time(candidate.generatedAt) < time(selected.generatedAt)) {
-    return `Rejected: superseded. The publisher issued ${selected.publisherReportId} on ${day(selected.generatedAt)}.`;
+    return `superseded by ${selected.publisherReportId}`;
   }
-  if (candidate.publisherReportId === selected.publisherReportId) {
-    return `Rejected: re-import of ${candidate.publisherReportId}, which is already selected.`;
-  }
-  return 'Rejected: a higher-precedence report is selected for this week.';
+  if (candidate.publisherReportId === selected.publisherReportId) return 're-import of the same publication';
+  return 'lower precedence';
 }
 
 /** Pairs every report with the outcome of the selection, the reason, and the publisher export total. */
