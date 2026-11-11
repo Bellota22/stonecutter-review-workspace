@@ -95,6 +95,9 @@ authorize anything.
 ![Architecture: inputs, pipeline and evidence, validation and policy, review case and outputs](docs/architecture.svg)
 
 The same diagram in Mermaid, which renders on the repository page: [`docs/architecture.md`](docs/architecture.md).
+The stack, the dependency direction and the patterns that earned their place — with the alternatives
+that were rejected and why — are recorded in
+[`docs/architecture-decisions.md`](docs/architecture-decisions.md).
 
 The same flow in words, band by band:
 
