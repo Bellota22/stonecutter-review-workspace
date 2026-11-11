@@ -537,7 +537,8 @@ table.data tr:hover {
   font-family: var(--mono);
   font-size: 11.5px;
   display: block;
-  white-space: nowrap;
+  /* Long publication ids wrap instead of forcing the table to scroll. */
+  overflow-wrap: anywhere;
 }
 .candidate__sub {
   display: block;
@@ -1282,22 +1283,12 @@ textarea:focus {
 }
 
 .data--recon {
-  table-layout: fixed;
+  /* Content decides the column widths; below ~560px the wrapper scrolls instead of squeezing
+     the dates into the numbers. */
+  min-width: 560px;
 }
-.data--recon th:nth-child(1) {
-  width: 42%;
-}
-.data--recon th:nth-child(2) {
-  width: 14%;
-}
-.data--recon th:nth-child(3) {
-  width: 14%;
-}
-.data--recon th:nth-child(4) {
-  width: 14%;
-}
-.data--recon th:nth-child(5) {
-  width: 16%;
+.data--recon td {
+  overflow-wrap: anywhere;
 }
 
 .railjump__icon {
@@ -1328,7 +1319,7 @@ textarea:focus {
   display: block;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
 /* ---------------- case tabs ---------------- */
@@ -1374,4 +1365,27 @@ textarea:focus {
   color: var(--muted);
   font-size: 11px;
   background: var(--surface-soft);
+}
+
+/* Grid and flex children default to min-width: auto, which lets a wide table push the whole page
+   instead of scrolling inside its own wrapper. */
+.casegrid > *,
+.case > *,
+.stack > *,
+.card {
+  min-width: 0;
+}
+.table-wrap {
+  max-width: 100%;
+}
+.rail,
+.rail > *,
+.rail__list {
+  min-width: 0;
+  max-width: 100%;
+}
+.data--recon th,
+.data--recon td {
+  padding-left: 8px;
+  padding-right: 8px;
 }

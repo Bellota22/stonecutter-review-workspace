@@ -1,6 +1,13 @@
 import type { CaseView } from '../../src/server/caseService.ts';
 import { day, number } from './primitives.tsx';
 
+/** The year is already in the page header, so the end date only repeats the month and day. */
+const shortEnd = (candidate: { periodStart: string; periodEnd: string }): string => {
+  const start = candidate.periodStart.slice(0, 10);
+  const end = candidate.periodEnd.slice(0, 10);
+  return start.slice(0, 4) === end.slice(0, 4) ? end.slice(5) : end;
+};
+
 export function CheckRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
   return (
     <div className="check">
@@ -100,8 +107,11 @@ export function WhyCard({ view }: { view: CaseView }) {
                       </span>
                     </td>
                     <td>
-                      <span className="candidate__period">
-                        {candidate.periodStart.slice(0, 10)} → {candidate.periodEnd.slice(0, 10)}
+                      <span
+                        className="candidate__period"
+                        title={`${candidate.periodStart.slice(0, 10)} → ${candidate.periodEnd.slice(0, 10)}`}
+                      >
+                        {candidate.periodStart.slice(0, 10)} → {shortEnd(candidate)}
                       </span>
                       <span className="candidate__sub">
                         {candidate.status === 'complete' ? 'full week' : 'partial'}
