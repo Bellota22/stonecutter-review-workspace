@@ -8,12 +8,15 @@
 --   5. extracted_at/report_id keep the ordering total and reproducible.
 --
 --
--- Why ROW_NUMBER and not DENSE_RANK (what the starter used): DENSE_RANK gives every row in the best
--- status the same number, so `WHERE priority = 1` returned all of them and the mart added three
--- publications of one week together. ROW_NUMBER numbers 1..n inside the partition, so exactly one row
--- can be 1. Its ORDER BY must be a total order or the choice would not be reproducible, which is why
--- the last two keys exist: they only decide when every business key ties (two imports of the same
--- publication).
+-- Why ROW_NUMBER and not DENSE_RANK (what the starter used):
+--   * DENSE_RANK numbers *ties*: every row in the best status gets the same number, so with the
+--     starter's partial ORDER BY `WHERE priority = 1` returned three rows and the mart added three
+--     publications of one week together.
+--   * With this full ORDER BY, DENSE_RANK would in fact return the same single row today, because no
+--     two rows tie on every key. It is still the wrong tool: its guarantee is about the ranking, not
+--     about uniqueness. Drop one tie-breaker later and it silently returns more rows again.
+--   * ROW_NUMBER numbers 1..n inside the partition, so exactly one row is 1 whatever the data does.
+--     That is the contract of this query: one authoritative snapshot per scope and week.
 --
 -- Step 3 is the correction: `revision` is assigned by our import job, so ordering by it lets a
 -- re-imported stale publication outrank the issued correction. Only the publisher can supersede a
