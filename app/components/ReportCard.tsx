@@ -30,15 +30,9 @@ export function ReportCard({
         <div className="reportcard__actions">
           <a
             className="button"
-            href={`/api/case/report/export?brandId=${scope.brandId}&marketplace=${scope.marketplace}&format=pdf`}
+            href={`/api/case/report/export?brandId=${scope.brandId}&marketplace=${scope.marketplace}`}
           >
             Download {draft ? 'draft ' : ''}PDF
-          </a>
-          <a
-            className="button"
-            href={`/api/case/report/export?brandId=${scope.brandId}&marketplace=${scope.marketplace}&format=docx`}
-          >
-            Download {draft ? 'draft ' : ''}DOCX
           </a>
         </div>
         {report ? (

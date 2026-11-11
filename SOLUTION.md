@@ -30,7 +30,7 @@ npm run verify                              # prettier + tsc + 15 TS tests + 9 P
 | Open a case for any brand and marketplace, investigate the evidence, validate a correction | `/` lists the 7 scopes; the case page shows the numbers, then "Where the numbers came from" | Open `cedar-coast/US`: 24,750 was counted before, 8,400 is counted now |
 | Save a decision with scope, sources, calculation, reason and limitations; survive a restart; reopen | "Record the decision" rail (Server Action) | Save, `docker compose restart`, reload: the version is still there |
 | Block unsupported approvals in the backend | `saveDecision` + `evaluateDecision` | The API refuses with `422` even when the UI is bypassed: `curl -X POST .../api/case/decision -d '{"outcome":"expand_promotion",...}'` |
-| Generate the client report from the validated state; revalidate when evidence changes | Report card (server-rendered) with PDF/DOCX export | Save, then change the evidence (see tests): the case moves to `needs_attention` and the report refuses the old approval |
+| Generate the client report from the validated state; revalidate when evidence changes | Report card (server-rendered) with a PDF download | Save, then change the evidence (see tests): the case moves to `needs_attention` and the report refuses the old approval |
 
 ## The correction
 
@@ -80,7 +80,7 @@ sql/select-reports.sql  the correction
 ```
 
 - **Data flow**: `raw.*` → `select-reports.sql` → `marts.subscription_weekly` → evidence (+ publisher
-  exports) → Python checks → policy verdict → case service → page, PDF/DOCX and JSON API.
+  exports) → Python checks → policy verdict → case service → page, the PDF download and the JSON API.
 - **Persistence**: new tables in a `review` schema on the local PGlite working copy
   (`review_case`, `decision`, `event`). Versions are append-only, each one stores the scope, source
   report ids, calculation, reason, derived limitations and an evidence fingerprint. The bundled
@@ -98,8 +98,9 @@ sql/select-reports.sql  the correction
   failing check, and the long evidence sits in collapsed disclosures that open themselves only when
   something needs attention.
 - The two actions are always reachable: the decision form is a sticky rail; the report is rendered by
-  the server as part of the case (a labelled draft before any decision) and can be downloaded as PDF
-  or DOCX from the same object, so the screen and the file cannot disagree.
+  the server as part of the case (a labelled draft before any decision) and the PDF is drawn from the
+  same object with the same hierarchy — header band, status chip, three figures, why, limitations, next
+  step, sources — so the screen and the file cannot disagree.
 - Decision history lists every version with its figures, reason, sources, limitations and evidence
   fingerprint, with the current version tagged.
 - Hover and focus-visible states on every clickable surface, `prefers-reduced-motion` honoured, and
@@ -112,7 +113,7 @@ sql/select-reports.sql  the correction
 | `tests/precedence.test.ts` | one publication per mart row, mart equals the selected report's offers, every deviation from the export explained by a measured ingestion gap, plus the three named cases |
 | `tests/test_reconciliation.py` | growth refused for partial coverage, truncated imports, a missing baseline and an export disagreement; every check is reported |
 | `tests/review-case.test.ts` | a decision survives stop/restart; the backend refuses an unsupported expansion; a publisher reissue moves the case to `needs_attention` and the old approval is not reused; a report the publisher never exported cannot be approved |
-| `tests/export-report.test.ts` | the PDF is a real PDF with the report inside, the DOCX is a real Word package with the same content, file names mark drafts |
+| `tests/export-report.test.ts` | the PDF is a real document whose text carries the figures, the decision and the next step; file names mark drafts |
 | `tests/analyst.test.ts`, first three Python tests | the supplied starter behaviour still works |
 
 ## Limitations and unfinished work
@@ -121,8 +122,8 @@ sql/select-reports.sql  the correction
   is immutable and re-fetching from a publisher is out of scope).
 - One case per scope and week, fixed to the reporting week the brief defines. No case list, comments,
   authentication or deployment, as the brief excludes them.
-- The PDF/DOCX export was added on request and is outside the brief's requirements; it renders the
-  same object as the page, so it cannot drift.
+- The PDF export was added on request and is outside the brief's requirements; it draws the same
+  object as the page, so it cannot drift.
 - No automated browser test in the repository: the interface was verified with real browser captures
   during development, and the server behaviour is covered by the tests above.
 - `reconciliationDelta` was redefined to "counted subscriptions minus the publisher declared total",

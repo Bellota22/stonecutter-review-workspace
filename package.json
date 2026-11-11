@@ -25,7 +25,6 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.9",
-    "docx": "9.15.3",
     "next": "15.5.29",
     "pdf-lib": "1.17.1",
     "react": "19.3.1",

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inflateRawSync } from 'node:zlib';
-import { exportFileName, renderDocx, renderPdf } from '../src/server/exportReport.ts';
+import { inflateSync } from 'node:zlib';
+import { exportFileName, renderPdf } from '../src/server/exportReport.ts';
 import type { ClientReport } from '../src/domain/clientReport.ts';
 
 const report: ClientReport = {
@@ -32,45 +32,55 @@ const report: ClientReport = {
   ],
 };
 
-test('the PDF export is a real PDF document', async () => {
-  const bytes = await renderPdf(report);
-  const header = new TextDecoder().decode(bytes.slice(0, 5));
-  assert.equal(header, '%PDF-');
-  assert.ok(bytes.byteLength > 1000, `expected a non-trivial document, got ${bytes.byteLength} bytes`);
-});
-
-/** Reads the entries of a zip package (stored or deflated), enough to inspect a docx. */
-function readZip(bytes: Uint8Array): Map<string, string> {
-  const buffer = Buffer.from(bytes);
-  const entries = new Map<string, string>();
-  let offset = 0;
-  while (offset + 30 <= buffer.length && buffer.readUInt32LE(offset) === 0x04034b50) {
-    const method = buffer.readUInt16LE(offset + 8);
-    const compressedSize = buffer.readUInt32LE(offset + 18);
-    const nameLength = buffer.readUInt16LE(offset + 26);
-    const extraLength = buffer.readUInt16LE(offset + 28);
-    const name = buffer.subarray(offset + 30, offset + 30 + nameLength).toString('utf8');
-    const dataStart = offset + 30 + nameLength + extraLength;
-    const data = buffer.subarray(dataStart, dataStart + compressedSize);
-    entries.set(name, (method === 0 ? data : inflateRawSync(data)).toString('utf8'));
-    offset = dataStart + compressedSize;
+/** The PDF draws its text as hex strings, so the content is read back the same way a viewer would. */
+function pdfText(bytes: Uint8Array): string {
+  const raw = Buffer.from(bytes).toString('latin1');
+  let out = '';
+  for (const stream of raw.matchAll(/stream\r?\n([\s\S]*?)endstream/g)) {
+    let content = stream[1] ?? '';
+    try {
+      content = inflateSync(Buffer.from(content, 'latin1')).toString('latin1');
+    } catch {
+      // uncompressed content stream
+    }
+    for (const hex of content.matchAll(/<([0-9A-Fa-f]+)>/g)) {
+      out += Buffer.from(hex[1] ?? '', 'hex').toString('latin1');
+    }
   }
-  return entries;
+  return out;
 }
 
-test('the DOCX export is a real Word package with the report inside', async () => {
-  const bytes = await renderDocx(report);
-  assert.equal(new TextDecoder().decode(bytes.slice(0, 2)), 'PK', 'a docx is a zip package');
-  const entries = readZip(bytes);
-  assert.ok(entries.has('word/document.xml'), `parts: ${[...entries.keys()].join(', ')}`);
-  const document = entries.get('word/document.xml') ?? '';
-  assert.ok(document.includes('w:document'), 'the document part is XML');
-  assert.ok(document.includes('Harbor Pantry'), 'the client name is in the document');
-  assert.ok(document.includes('3,780'), 'the verified figures are in the document');
-  assert.ok(document.includes('Keep the current promotion'), 'the next step is in the document');
+test('the PDF export is a real document with the report inside', async () => {
+  const bytes = await renderPdf(report);
+  assert.equal(Buffer.from(bytes).subarray(0, 5).toString('latin1'), '%PDF-');
+  const text = pdfText(bytes);
+  for (const expected of [
+    'Harbor Pantry',
+    '3,780',
+    '3,600',
+    'Hold the current promotion',
+    'LIMITATIONS',
+    'NEXT STEP',
+    'CA-harbor-pantry-2026-09-28-g4',
+  ]) {
+    assert.ok(text.includes(expected), `the PDF contains "${expected}"`);
+  }
 });
 
-test('file names are predictable and mark drafts', () => {
-  assert.equal(exportFileName(report, 'pdf'), 'harbor-pantry-ca-2026-09-28-hold.pdf');
-  assert.equal(exportFileName({ ...report, draft: true }, 'docx'), 'harbor-pantry-ca-2026-09-28-draft.docx');
+test('a draft export says so on the page and in the file name', async () => {
+  const draft: ClientReport = { ...report, draft: true };
+  assert.equal(exportFileName(draft), 'harbor-pantry-ca-2026-09-28-draft.pdf');
+  const text = pdfText(await renderPdf(draft));
+  assert.ok(text.includes('DRAFT'), 'the draft is marked in the document');
+});
+
+test('file names are predictable', () => {
+  assert.equal(exportFileName(report), 'harbor-pantry-ca-2026-09-28-hold.pdf');
+  assert.equal(
+    exportFileName({
+      ...report,
+      decision: { ...report.decision, outcome: 'expand_promotion', budgetChangePct: 10 },
+    }),
+    'harbor-pantry-ca-2026-09-28-expand.pdf',
+  );
 });

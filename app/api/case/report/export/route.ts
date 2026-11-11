@@ -1,19 +1,18 @@
 import { withDatabase } from '../../../../../src/server/db.ts';
 import { openCase, reportFor } from '../../../../../src/server/caseService.ts';
-import { exportFileName, renderDocx, renderPdf } from '../../../../../src/server/exportReport.ts';
+import { exportFileName, renderPdf } from '../../../../../src/server/exportReport.ts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * The client report as a file, rendered from the same object the page shows. A draft can be exported
+ * The client report as a PDF, rendered from the same object the page shows. A draft can be exported
  * too: it is labelled as a draft inside the document and in the file name.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const brandId = url.searchParams.get('brandId');
   const marketplace = url.searchParams.get('marketplace') ?? 'US';
-  const format = url.searchParams.get('format') === 'docx' ? 'docx' : 'pdf';
 
   if (!brandId) {
     return Response.json({ error: 'invalid_request', details: ['brandId is required.'] }, { status: 400 });
@@ -31,15 +30,11 @@ export async function GET(request: Request) {
     );
   }
 
-  const bytes = format === 'pdf' ? await renderPdf(result.report) : await renderDocx(result.report);
-  const body = new Uint8Array(bytes);
+  const body = new Uint8Array(await renderPdf(result.report));
   return new Response(body, {
     headers: {
-      'content-type':
-        format === 'pdf'
-          ? 'application/pdf'
-          : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'content-disposition': `attachment; filename="${exportFileName(result.report, format)}"`,
+      'content-type': 'application/pdf',
+      'content-disposition': `attachment; filename="${exportFileName(result.report)}"`,
       'content-length': String(body.byteLength),
       'cache-control': 'no-store',
     },
