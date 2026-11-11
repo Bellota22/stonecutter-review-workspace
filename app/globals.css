@@ -1313,3 +1313,13 @@ textarea:focus {
   font-weight: 600;
   font-size: 12px;
 }
+
+.reportcard__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.reportcard__actions .button {
+  font-size: 12px;
+  padding: 7px 12px;
+}

@@ -6,7 +6,13 @@ import { day } from './primitives.tsx';
  * The report is always on the page: with a saved decision it is the client document, without one it
  * is a draft of what the policy verdict would produce. Nothing is hidden behind a button.
  */
-export function ReportCard({ result }: { result: ReportResult }) {
+export function ReportCard({
+  result,
+  scope,
+}: {
+  result: ReportResult;
+  scope: { brandId: string; marketplace: string };
+}) {
   const report = result.kind === 'ready' || result.kind === 'draft' ? result.report : null;
   const draft = report?.draft ?? false;
 
@@ -20,6 +26,20 @@ export function ReportCard({ result }: { result: ReportResult }) {
               ? 'Draft: this is what the client would receive if the suggested decision were saved.'
               : 'Built from the saved decision and the evidence behind it, never from this screen.'}
           </p>
+        </div>
+        <div className="reportcard__actions">
+          <a
+            className="button"
+            href={`/api/case/report/export?brandId=${scope.brandId}&marketplace=${scope.marketplace}&format=pdf`}
+          >
+            Download {draft ? 'draft ' : ''}PDF
+          </a>
+          <a
+            className="button"
+            href={`/api/case/report/export?brandId=${scope.brandId}&marketplace=${scope.marketplace}&format=docx`}
+          >
+            Download {draft ? 'draft ' : ''}DOCX
+          </a>
         </div>
         {report ? (
           <span

@@ -76,7 +76,7 @@ export default async function CasePage({
           <DecisionRail view={view} />
         </div>
 
-        <ReportCard result={report} />
+        <ReportCard result={report} scope={view.scope} />
       </div>
     </main>
   );
