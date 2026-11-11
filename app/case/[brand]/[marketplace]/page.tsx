@@ -10,6 +10,7 @@ import { MetricStrip } from '../../../components/MetricStrip.tsx';
 import { ReportCard } from '../../../components/ReportCard.tsx';
 import { ScopeNav } from '../../../components/ScopeNav.tsx';
 import { CardSkeleton, NavSkeleton, RailSkeleton, SummarySkeleton } from '../../../components/Skeletons.tsx';
+import { CaseTabs } from '../../../components/Tabs.tsx';
 import { ChecksCard, VerdictBar } from '../../../components/VerdictBar.tsx';
 import { WhyCard } from '../../../components/WhyCard.tsx';
 import { StatusChip, day } from '../../../components/primitives.tsx';
@@ -26,16 +27,25 @@ interface NavData {
   states: CaseState[];
 }
 
+type View = 'report' | 'review';
+
 /**
- * The case is streamed in sections. One read of the case feeds them all, and each section has its own
- * loading placeholder, so a slow section never hides the rest of the page.
+ * Two views, one read of the case.
+ *
+ * - `report` (default): what the client receives. The report opens first, because that is the outcome
+ *   the operations manager is producing; the decision controls sit beside it.
+ * - `review`: the internal evidence behind that report — publications, reconciliation, checks, history.
  */
 export default async function CasePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ brand: string; marketplace: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const { brand, marketplace } = await params;
+  const { view: requested } = await searchParams;
+  const view: View = requested === 'review' ? 'review' : 'report';
   const scope: ScopeEntry = { brandId: brand, marketplace: marketplace.toUpperCase() };
 
   const viewPromise = withDatabase((db) => openCase(db, scope.brandId, scope.marketplace));
@@ -64,29 +74,43 @@ export default async function CasePage({
         ) : null}
 
         <Suspense fallback={<SummarySkeleton />}>
-          <SummarySection viewPromise={viewPromise} />
+          <HeaderSection viewPromise={viewPromise} view={view} />
         </Suspense>
 
-        <div className="casegrid">
-          <div className="stack">
-            <Suspense fallback={<CardSkeleton rows={4} />}>
-              <EvidenceSection viewPromise={viewPromise} />
+        {view === 'review' ? (
+          <>
+            <Suspense fallback={<SummarySkeleton />}>
+              <SummarySection viewPromise={viewPromise} />
             </Suspense>
-            <Suspense fallback={<CardSkeleton rows={2} />}>
-              <ChecksSection viewPromise={viewPromise} />
-            </Suspense>
-            <Suspense fallback={<CardSkeleton rows={3} />}>
-              <HistorySection viewPromise={viewPromise} />
+            <div className="casegrid">
+              <div className="stack">
+                <Suspense fallback={<CardSkeleton rows={4} />}>
+                  <EvidenceSection viewPromise={viewPromise} />
+                </Suspense>
+                <Suspense fallback={<CardSkeleton rows={2} />}>
+                  <ChecksSection viewPromise={viewPromise} />
+                </Suspense>
+                <Suspense fallback={<CardSkeleton rows={3} />}>
+                  <HistorySection viewPromise={viewPromise} />
+                </Suspense>
+              </div>
+              <Suspense fallback={<RailSkeleton />}>
+                <DecisionSection viewPromise={viewPromise} showReportLink />
+              </Suspense>
+            </div>
+          </>
+        ) : (
+          <div className="casegrid">
+            <div className="stack">
+              <Suspense fallback={<CardSkeleton rows={5} />}>
+                <ReportSection viewPromise={viewPromise} />
+              </Suspense>
+            </div>
+            <Suspense fallback={<RailSkeleton />}>
+              <DecisionSection viewPromise={viewPromise} showReportLink={false} />
             </Suspense>
           </div>
-          <Suspense fallback={<RailSkeleton />}>
-            <DecisionSection viewPromise={viewPromise} />
-          </Suspense>
-        </div>
-
-        <Suspense fallback={<CardSkeleton rows={5} />}>
-          <ReportSection viewPromise={viewPromise} />
-        </Suspense>
+        )}
       </div>
     </main>
   );
@@ -98,23 +122,33 @@ async function NavSection({ promise, scope }: { promise: Promise<NavData>; scope
   return <ScopeNav scopes={scopes} states={states} active={scope} />;
 }
 
-async function SummarySection({ viewPromise }: { viewPromise: Promise<CaseView> }) {
-  await simulateLatency('summary', 0.6);
-  const view = await viewPromise;
+async function HeaderSection({ viewPromise, view }: { viewPromise: Promise<CaseView>; view: View }) {
+  await simulateLatency('header', 0.5);
+  const current = await viewPromise;
   return (
     <>
       <header className="casehead">
         <div>
           <h1>
-            {view.scope.brandName} <span>· {view.scope.marketplace}</span>
+            {current.scope.brandName} <span>· {current.scope.marketplace}</span>
           </h1>
           <p className="casehead__sub">
-            Week of {day(view.scope.periodStart)} to {day(view.scope.expectedPeriodEnd)} ·{' '}
-            <span className="mono">{view.caseId}</span>
+            Week of {day(current.scope.periodStart)} to {day(current.scope.expectedPeriodEnd)} ·{' '}
+            <span className="mono">{current.caseId}</span>
           </p>
         </div>
-        <StatusChip view={view} />
+        <StatusChip view={current} />
       </header>
+      <CaseTabs brandId={current.scope.brandId} marketplace={current.scope.marketplace} active={view} />
+    </>
+  );
+}
+
+async function SummarySection({ viewPromise }: { viewPromise: Promise<CaseView> }) {
+  await simulateLatency('summary', 0.7);
+  const view = await viewPromise;
+  return (
+    <>
       <MetricStrip view={view} />
       <VerdictBar view={view} />
     </>
@@ -139,14 +173,20 @@ async function HistorySection({ viewPromise }: { viewPromise: Promise<CaseView> 
   return <HistoryCard view={view} />;
 }
 
-async function DecisionSection({ viewPromise }: { viewPromise: Promise<CaseView> }) {
+async function DecisionSection({
+  viewPromise,
+  showReportLink,
+}: {
+  viewPromise: Promise<CaseView>;
+  showReportLink: boolean;
+}) {
   await simulateLatency('decision', 1.6);
   const view = await viewPromise;
-  return <DecisionRail view={view} />;
+  return <DecisionRail view={view} showReportLink={showReportLink} />;
 }
 
 async function ReportSection({ viewPromise }: { viewPromise: Promise<CaseView> }) {
-  await simulateLatency('report', 2);
+  await simulateLatency('report', 1.8);
   const view = await viewPromise;
   return <ReportCard result={reportFor(view)} scope={view.scope} />;
 }

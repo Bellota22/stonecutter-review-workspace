@@ -11,7 +11,7 @@ import { initialDecisionState } from '../_actions/decisionState.ts';
  * The decision form posts a Server Action: the backend re-derives the evidence, saves or refuses, and
  * the case page re-renders from the database. There is no client-side copy of the decision to drift.
  */
-export function DecisionRail({ view }: { view: CaseView }) {
+export function DecisionRail({ view, showReportLink = false }: { view: CaseView; showReportLink?: boolean }) {
   const expandable = view.verdict.outcome === 'expand_promotion';
   const [outcome, setOutcome] = useState<Outcome>(
     view.decision?.outcome ?? (expandable ? 'expand_promotion' : 'hold'),
@@ -137,12 +137,14 @@ export function DecisionRail({ view }: { view: CaseView }) {
         ) : null}
       </form>
 
-      <a className="railjump" href="#report">
-        <span className="railjump__icon" aria-hidden="true">
-          ↓
-        </span>
-        <span>Go to the client report</span>
-      </a>
+      {showReportLink ? (
+        <a className="railjump" href={`/case/${view.scope.brandId}/${view.scope.marketplace}`}>
+          <span className="railjump__icon" aria-hidden="true">
+            →
+          </span>
+          <span>Go to the client report</span>
+        </a>
+      ) : null}
     </aside>
   );
 }

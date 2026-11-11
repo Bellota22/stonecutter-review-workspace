@@ -3,8 +3,8 @@ import type { ClientReport } from '../../src/domain/clientReport.ts';
 import { day } from './primitives.tsx';
 
 /**
- * The report is always on the page: with a saved decision it is the client document, without one it
- * is a draft of what the policy verdict would produce. Nothing is hidden behind a button.
+ * The client report, and only that: the supported figures, the decision, its caveats and the next
+ * step. Internal traceability (publication ids, checks, reconciliation) lives in the review view.
  */
 export function ReportCard({
   result,
@@ -24,7 +24,7 @@ export function ReportCard({
           <p className="card__hint">
             {draft
               ? 'Draft: this is what the client would receive if the suggested decision were saved.'
-              : 'Built from the saved decision and the evidence behind it, never from this screen.'}
+              : 'Built from the saved decision and the verified figures.'}
           </p>
         </div>
         <div className="reportcard__actions">
@@ -35,20 +35,6 @@ export function ReportCard({
             Download {draft ? 'draft ' : ''}PDF
           </a>
         </div>
-        {report ? (
-          <span
-            className={`chip chip--${
-              draft ? 'neutral' : report.decision.outcome === 'expand_promotion' ? 'ok' : 'warn'
-            }`}
-          >
-            <span className="chip__dot" />
-            {draft
-              ? 'Draft · no decision'
-              : report.decision.outcome === 'expand_promotion'
-                ? `Expand ${report.decision.budgetChangePct}%`
-                : 'Hold'}
-          </span>
-        ) : null}
       </div>
 
       {result.kind === 'requires_attention' && (
@@ -61,7 +47,9 @@ export function ReportCard({
                 <li key={change}>{change}</li>
               ))}
             </ul>
-            <span className="notice__foot">Save a new decision version to regenerate the report.</span>
+            <span className="notice__foot">
+              Open the review tab, check the new evidence and save a new decision version.
+            </span>
           </div>
         </div>
       )}
@@ -116,9 +104,6 @@ function ReportDocument({ report }: { report: ClientReport }) {
         </span>
       </header>
 
-      <p className="provenance" style={{ padding: '0 16px', marginTop: 10 }}>
-        Figures come from the selected publisher reports, verified against the publisher exports.
-      </p>
       <div className="report__figures">
         {report.supportedResult.map((row) => (
           <div className="report__figure" key={row.label}>
@@ -131,19 +116,13 @@ function ReportDocument({ report }: { report: ClientReport }) {
 
       <div className="report__body">
         <div className="report__section">
-          <span className="report__label">
-            Why <span className="provenance">· the reason you recorded</span>
-          </span>
+          <span className="report__label">Decision</span>
           <p className="report__text">{report.decision.reason}</p>
         </div>
         <div className="report__section">
-          <span className="report__label">
-            Limitations <span className="provenance">· from the checks that failed</span>
-          </span>
+          <span className="report__label">Caveats</span>
           {report.limitations.length === 0 ? (
-            <p className="report__text">
-              None material: both weeks are complete and reconcile to the publisher.
-            </p>
+            <p className="report__text">None material: both weeks are complete and verified.</p>
           ) : (
             <ul className="report__list">
               {report.limitations.map((limitation) => (
@@ -153,24 +132,14 @@ function ReportDocument({ report }: { report: ClientReport }) {
           )}
         </div>
         <div className="report__section">
-          <span className="report__label">
-            Next step <span className="provenance">· from the policy</span>
-          </span>
+          <span className="report__label">Next step</span>
           <p className="report__next">{report.nextStep}</p>
         </div>
-        <div className="report__section">
-          <span className="report__label">
-            Sources <span className="provenance">· publisher report ids</span>
-          </span>
-          <ul className="report__list report__list--mono">
-            {report.sources.map((source) => (
-              <li key={source.reportId}>
-                {source.publisherReportId} · {source.status} · through {day(source.periodEnd)}
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
+
+      <footer className="report__foot">
+        Figures verified against the publisher&apos;s weekly export before this report was produced.
+      </footer>
     </article>
   );
 }

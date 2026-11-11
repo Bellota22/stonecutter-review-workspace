@@ -22,41 +22,46 @@ seconds so the per-section skeletons are visible, then record the rest without i
 
 Show: the landing page with the seven scopes, hover a card.
 
-## 0:15 – 0:45 · The case
+## 0:15 – 0:50 · The case, and the report that opens first
 
-Open **Cedar & Coast · US**.
+Open **Cedar & Coast · US**. The case opens on the **Client report** tab, because the report is the
+product; the evidence sits behind the second tab.
 
-> "This is the reported case. Four numbers at the top, straight from the publisher's reports: 8,400
-> active subscriptions, 7,800 the week before. The verdict is blocked — this week is only published
-> through October 2nd, so week-over-week growth is not comparable. And the second line tells you what
-> to do about it: request the complete week."
+> "This is the reported case, and I land on the report itself. Four figures, straight from the
+> publisher's reports: 8,400 active subscriptions, 7,800 the week before. The verdict is a hold — this
+> week is only published through October 2nd, so week-over-week growth is not comparable — and the
+> next step says what to do about it: request the complete week."
 
-Show: the metric row, then the blocked banner with its next-step line.
+Show: the metric figures inside the report, the caveats, the next step, the `Download draft PDF`
+button. Note that there is a second tab called **Review**.
 
-## 0:45 – 1:20 · The correction, and why it is right
+## 0:50 – 1:25 · The evidence behind it (internal view)
 
-Expand **Where the numbers came from**.
+Switch to **Review**.
 
-> "The publisher reissued this week three times: g1, g2, g3 — 8,100, 8,250, 8,400. The query that came
-> with the starter counted all three: 24,750. The query now counts exactly one, and the publisher's
-> export decides which: g3, 8,400. The rule is: complete beats partial, wider coverage wins, and the
-> publisher's newest publication supersedes the older ones — not our import counter, which is what let
-> a re-import beat the published correction."
+> "The client never sees this tab; it is the operator's evidence. The publisher reissued this week
+> three times: g1, g2, g3 — 8,100, 8,250, 8,400. The query that came with the starter counted all
+> three: 24,750. The query now counts exactly one, and the publisher's export decides which: g3, 8,400.
+> The rule is: complete beats partial, wider coverage wins, and the publisher's newest publication
+> supersedes the older ones — not our import counter, which is what let a re-import beat the published
+> correction."
 
 Optional stronger beat: in a terminal, `git diff starter -- sql/select-reports.sql`.
 
-Show: the 24,750 → 8,400 strip, then the table with Period, Export, Our import and the short reasons.
+Show: the 24,750 → 8,400 strip, the table with Period, Export, Our import and the short reasons, then
+the checks card open with the failing coverage check and the eight measurements.
 
-## 1:20 – 1:55 · Backend enforcement, decision, report
+## 1:25 – 1:55 · Backend enforcement, decision, report
 
 > "Because the evidence is incomplete, expanding is refused by the backend, not just greyed out: the
 > server answers 422 with the reasons. So I record a hold. The client report is generated from that
-> saved decision — 8,400, 7,800, not comparable, with the limitations and the next step — and the same
+> saved decision — 8,400, 7,800, not comparable, with the caveats and the next step — and the same
 > document downloads as a PDF. Decision history keeps every version with its figures and the evidence
 > fingerprint it was pinned to."
 
-Show: click **Expand 10%** (disabled), type a reason, **Save decision**, the report appearing below,
-`Download PDF`, then **Decision history**.
+Show: click **Expand 10%** (disabled), type a reason, **Save decision**, then switch to **Client
+report** and see the draft become the real report, `Download PDF`, and **Decision history** back in the
+review tab.
 
 ## 1:55 – 2:35 · Architecture
 
@@ -92,3 +97,5 @@ Open **Lumen Home · CA**.
 - Reading numbers off the screen instead of explaining what they mean.
 - Mentioning an "old pipeline": the baseline is the `starter` commit, and `git diff starter..HEAD`
   shows it.
+- Showing the review tab as if it were the client deliverable: the client receives the report tab or
+  the PDF, never the reconciliation table.

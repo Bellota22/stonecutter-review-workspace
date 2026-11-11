@@ -281,18 +281,12 @@ export async function renderPdf(report: ClientReport): Promise<Uint8Array> {
   });
   cursor.y -= boxHeight + 10;
 
-  section('Sources', '· publisher report ids', () => {
-    for (const source of report.sources) {
-      text(`${source.publisherReportId} · ${source.status} · through ${day(source.periodEnd)}`, {
-        size: 8.5,
-        mono: true,
-        color: MUTED,
-      });
-    }
-  });
-
-  cursor.y -= 4;
+  cursor.y -= 2;
   rule(12);
+  text('Figures verified against the publisher weekly export before this report was produced.', {
+    size: 7.5,
+    color: MUTED,
+  });
   text(signature(report), { size: 7.5, color: MUTED });
 
   return pdf.save();

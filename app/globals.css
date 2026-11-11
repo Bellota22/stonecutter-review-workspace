@@ -1330,3 +1330,48 @@ textarea:focus {
   white-space: nowrap;
   font-size: 12px;
 }
+
+/* ---------------- case tabs ---------------- */
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #eaeef4;
+  align-self: start;
+}
+.tab {
+  display: grid;
+  gap: 1px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  color: var(--ink-soft);
+  transition:
+    background var(--speed) ease,
+    color var(--speed) ease,
+    box-shadow var(--speed) ease;
+}
+.tab:hover {
+  background: #dfe5ee;
+  color: var(--ink);
+}
+.tab--active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.tab__label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.tab__hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+.report__foot {
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  background: var(--surface-soft);
+}

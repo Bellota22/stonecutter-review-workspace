@@ -61,7 +61,7 @@ test('the PDF export is a real document with the report inside', async () => {
     'Hold the current promotion',
     'LIMITATIONS',
     'NEXT STEP',
-    'CA-harbor-pantry-2026-09-28-g4',
+    'Figures verified against the publisher',
   ]) {
     assert.ok(text.includes(expected), `the PDF contains "${expected}"`);
   }

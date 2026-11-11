@@ -136,10 +136,16 @@ sql/select-reports.sql  the correction
 - Numbers before prose: four metric tiles open the case, the outcome is one sentence derived from the
   failing check, and the long evidence sits in collapsed disclosures that open themselves only when
   something needs attention.
-- The two actions are always reachable: the decision form is a sticky rail; the report is rendered by
-  the server as part of the case (a labelled draft before any decision) and the PDF is drawn from the
-  same object with the same hierarchy — header band, status chip, three figures, why, limitations, next
-  step, sources — so the screen and the file cannot disagree.
+- **Two views, two audiences.** Opening a case lands on the **Client report**: the figures, the
+  decision, its caveats and the next step, plus the decision controls. The investigation material —
+  which publications exist for the week, what the exports say, the eight checks, the decision history —
+  lives behind a **Review** tab, where an operator or an auditor can inspect it. The client report and
+  its PDF carry no internal ids: only a line stating that the figures were verified against the
+  publisher's export.
+- The decision form is a sticky rail, and the report is rendered by the server as part of the case (a
+  labelled draft before any decision). The PDF is drawn from the same object with the same hierarchy —
+  header band, status chip, three figures, decision, caveats, next step — so the screen and the file
+  cannot disagree.
 - Decision history lists every version with its figures, reason, sources, limitations and evidence
   fingerprint, with the current version tagged.
 - Hover and focus-visible states on every clickable surface, `prefers-reduced-motion` honoured, and
